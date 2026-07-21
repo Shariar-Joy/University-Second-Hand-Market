@@ -1,0 +1,43 @@
+<svg width="1600" height="1200" viewBox="0 0 1600 1200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ece3fb" />
+      <stop offset="55%" stop-color="#f7f6fa" />
+      <stop offset="100%" stop-color="#f3edfb" />
+    </linearGradient>
+
+    <g id="bag" stroke="#aa3bff" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M10 40 L130 40 L118 150 L22 150 Z" />
+      <path d="M40 40 C40 5 100 5 100 40" />
+    </g>
+
+    <g id="tag" stroke="#aa3bff" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M10 60 L60 10 L130 10 L130 80 L80 130 Z" />
+      <circle cx="100" cy="40" r="9" />
+      <path d="M0 40 L10 60" />
+    </g>
+
+    <g id="laptop" stroke="#aa3bff" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="10" y="0" width="120" height="80" rx="8" />
+      <path d="M-10 100 L150 100 L134 80 L6 80 Z" />
+    </g>
+
+    <g id="cap" stroke="#aa3bff" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M0 0 L90 -34 L180 0 L90 34 Z" />
+      <path d="M45 17 L45 55 C45 70 135 70 135 55 L135 17" />
+    </g>
+  </defs>
+
+  <rect width="1600" height="1200" fill="url(#bg)" />
+
+  <g opacity="0.16">
+    <use href="#bag" x="130" y="150" transform="rotate(-6 130 150) scale(1.2)" />
+    <use href="#tag" x="1320" y="120" transform="rotate(10 1320 120)" />
+    <use href="#laptop" x="70" y="900" transform="rotate(-4 70 900) scale(1.1)" />
+    <use href="#cap" x="1300" y="920" transform="rotate(8 1300 920) scale(0.9)" />
+    <use href="#bag" x="1400" y="560" transform="scale(0.8)" />
+    <use href="#tag" x="60" y="560" transform="rotate(-8 60 560) scale(0.8)" />
+    <use href="#laptop" x="760" y="40" transform="scale(0.7)" />
+    <use href="#cap" x="700" y="1100" transform="scale(0.7)" />
+  </g>
+</svg>

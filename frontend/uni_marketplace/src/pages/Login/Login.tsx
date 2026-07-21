@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Input from '../../components/common/Input'
 import Button from '../../components/common/Button'
+import * as authService from '../../services/authService'
+import { extractErrorMessage } from '../../utils/errorMessage'
 import { APP_NAME } from '../../constants'
 import { ROUTES } from '../../routes/routePaths'
 import styles from './Login.module.css'
@@ -13,6 +15,7 @@ function Login() {
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
+  const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function validate(): boolean {
@@ -27,15 +30,20 @@ function Login() {
     return Object.keys(errors).length === 0
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setFormError('')
     if (!validate()) return
 
     setIsSubmitting(true)
-    // No backend yet — simulate a successful login and hand off to Home.
-    window.setTimeout(() => {
-      navigate(ROUTES.HOME, { state: { justAuthed: true, name: email.split('@')[0] } })
-    }, 400)
+    try {
+      const user = await authService.login({ email, password, rememberMe })
+      navigate(ROUTES.HOME, { state: { justAuthed: true, name: user.fullName } })
+    } catch (error) {
+      setFormError(extractErrorMessage(error, 'Invalid email or password.'))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -43,6 +51,12 @@ function Login() {
       <div className={styles.card}>
         <h1 className={styles.title}>Welcome back</h1>
         <p className={styles.subtitle}>Log in to {APP_NAME} with your university email.</p>
+
+        {formError && (
+          <p className={styles.formError} role="alert">
+            {formError}
+          </p>
+        )}
 
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <Input

@@ -5,6 +5,8 @@ import Button from '../../components/common/Button'
 import { universities } from '../../data/universities'
 import { isUniversityEmail, isValidEmailFormat } from '../../utils/emailValidation'
 import { validatePasswordStrength } from '../../utils/passwordValidation'
+import * as authService from '../../services/authService'
+import { extractErrorMessage } from '../../utils/errorMessage'
 import { APP_NAME } from '../../constants'
 import { ROUTES } from '../../routes/routePaths'
 import styles from './Register.module.css'
@@ -66,24 +68,40 @@ function Register() {
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function updateField<K extends keyof FormValues>(field: K, value: FormValues[K]) {
     setValues((previous) => ({ ...previous, [field]: value }))
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setFormError('')
 
     const errors = validate(values, agreedToTerms)
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) return
 
     setIsSubmitting(true)
-    // No backend yet — simulate account creation and hand off to Home.
-    window.setTimeout(() => {
-      navigate(ROUTES.HOME, { state: { justAuthed: true, name: values.fullName.trim() } })
-    }, 400)
+    try {
+      const user = await authService.register({
+        fullName: values.fullName.trim(),
+        username: values.username.trim(),
+        email: values.email.trim(),
+        university: values.university,
+        department: values.department.trim(),
+        studentId: values.studentId.trim(),
+        phone: values.phone.trim() || undefined,
+        password: values.password,
+        confirmPassword: values.confirmPassword,
+      })
+      navigate(ROUTES.HOME, { state: { justAuthed: true, name: user.fullName } })
+    } catch (error) {
+      setFormError(extractErrorMessage(error, 'Could not create your account. Please try again.'))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -92,11 +110,17 @@ function Register() {
         <h1 className={styles.title}>Create your account</h1>
         <p className={styles.subtitle}>Join {APP_NAME} — free for every verified student.</p>
 
+        {formError && (
+          <p className={styles.formError} role="alert">
+            {formError}
+          </p>
+        )}
+
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <Input
             label="Full Name"
             name="fullName"
-            placeholder="Jane Doe"
+            placeholder="Shariar Joy"
             value={values.fullName}
             onChange={(event) => updateField('fullName', event.target.value)}
             error={fieldErrors.fullName}
@@ -105,7 +129,7 @@ function Register() {
           <Input
             label="Username"
             name="username"
-            placeholder="jane_doe"
+            placeholder="shariar_joy"
             value={values.username}
             onChange={(event) => updateField('username', event.target.value)}
             error={fieldErrors.username}
@@ -154,7 +178,7 @@ function Register() {
             <Input
               label="Department"
               name="department"
-              placeholder="Computer Science"
+              placeholder="CSE"
               value={values.department}
               onChange={(event) => updateField('department', event.target.value)}
               error={fieldErrors.department}
@@ -163,7 +187,7 @@ function Register() {
             <Input
               label="Student ID"
               name="studentId"
-              placeholder="CS-2024-001"
+              placeholder="2024-001"
               value={values.studentId}
               onChange={(event) => updateField('studentId', event.target.value)}
               error={fieldErrors.studentId}
@@ -175,7 +199,7 @@ function Register() {
             label="Phone (optional)"
             name="phone"
             type="tel"
-            placeholder="+1 555 010 2024"
+            placeholder="+880 1XXXXXXXXX"
             value={values.phone}
             onChange={(event) => updateField('phone', event.target.value)}
           />
