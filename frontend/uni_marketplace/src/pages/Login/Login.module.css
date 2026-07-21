@@ -4,7 +4,9 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
-  background-color: var(--color-bg-alt);
+  background-image: url('../../assets/login-bg.svg');
+  background-size: cover;
+  background-position: center;
 }
 
 .card {
