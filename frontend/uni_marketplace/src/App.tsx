@@ -1,21 +1,25 @@
-import { BrowserRouter, Link } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import AppRoutes from './routes/AppRoutes'
-import { APP_NAME } from './constants'
-import { ROUTES } from './routes/routePaths'
+import Navbar from './components/layout/Navbar'
+import { AuthProvider } from './context/AuthContext'
+import { CartProvider } from './context/CartContext'
+import { ToastProvider } from './context/ToastContext'
 import styles from './App.module.css'
 
 function App() {
   return (
-    <BrowserRouter>
-      <header className={styles.header}>
-        <Link to={ROUTES.HOME} className={styles.brand}>
-          {APP_NAME}
-        </Link>
-      </header>
-      <main className={styles.main}>
-        <AppRoutes />
-      </main>
-    </BrowserRouter>
+    <AuthProvider>
+      <CartProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <Navbar />
+            <main className={styles.main}>
+              <AppRoutes />
+            </main>
+          </BrowserRouter>
+        </ToastProvider>
+      </CartProvider>
+    </AuthProvider>
   )
 }
 
