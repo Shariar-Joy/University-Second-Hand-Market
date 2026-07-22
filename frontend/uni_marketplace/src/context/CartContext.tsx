@@ -1,15 +1,15 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 export interface CartItem {
-  productId: string
+  productId: number
   quantity: number
 }
 
 interface CartContextValue {
   items: CartItem[]
-  addItem: (productId: string) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  addItem: (productId: number) => void
+  removeItem: (productId: number) => void
+  updateQuantity: (productId: number, quantity: number) => void
   clearCart: () => void
   totalCount: number
 }
@@ -36,7 +36,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
   }, [items])
 
-  function addItem(productId: string) {
+  function addItem(productId: number) {
     setItems((previous) => {
       const existing = previous.find((item) => item.productId === productId)
       if (existing) {
@@ -48,11 +48,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  function removeItem(productId: string) {
+  function removeItem(productId: number) {
     setItems((previous) => previous.filter((item) => item.productId !== productId))
   }
 
-  function updateQuantity(productId: string, quantity: number) {
+  function updateQuantity(productId: number, quantity: number) {
     setItems((previous) =>
       previous.map((item) => (item.productId === productId ? { ...item, quantity: Math.max(1, quantity) } : item)),
     )

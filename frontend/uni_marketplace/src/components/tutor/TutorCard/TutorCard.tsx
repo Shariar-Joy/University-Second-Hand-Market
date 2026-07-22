@@ -2,7 +2,7 @@ import Avatar from '../../common/Avatar'
 import Button from '../../common/Button'
 import StarRating from '../../common/StarRating'
 import { useToast } from '../../../context/ToastContext'
-import type { Tutor } from '../../../data/tutors'
+import type { Tutor } from '../../../services/tutorService'
 import { formatBDT } from '../../../utils/currency'
 import styles from './TutorCard.module.css'
 

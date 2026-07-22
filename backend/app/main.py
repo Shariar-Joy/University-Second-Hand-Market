@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes.auth import router as auth_router
+from app.api.routes.products import router as products_router
+from app.api.routes.tutors import router as tutors_router
 from app.core.config import settings
 from app.db.database import init_db
 
@@ -35,6 +37,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+app.include_router(products_router, prefix=settings.API_V1_PREFIX)
+app.include_router(tutors_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/api/v1/health")
