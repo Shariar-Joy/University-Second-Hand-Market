@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -9,7 +10,9 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.products import router as products_router
 from app.api.routes.tutors import router as tutors_router
 from app.core.config import settings
-from app.db.database import init_db
+from app.db.dynamodb import DynamoDBError, init_db
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 
 @asynccontextmanager
@@ -34,6 +37,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     first_error = exc.errors()[0]
     message = str(first_error["msg"]).removeprefix("Value error, ")
     return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"detail": message})
+
+
+@app.exception_handler(DynamoDBError)
+async def dynamodb_exception_handler(request: Request, exc: DynamoDBError):
+    return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"detail": str(exc)})
 
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)

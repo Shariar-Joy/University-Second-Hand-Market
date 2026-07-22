@@ -7,7 +7,13 @@ class Settings(BaseSettings):
     APP_NAME: str = "Campus Exchange API"
     API_V1_PREFIX: str = "/api/v1"
 
-    DATABASE_PATH: str = "app.db"
+    AWS_REGION: str = "us-east-1"
+    USERS_TABLE: str = "campus_exchange_users"
+    PRODUCTS_TABLE: str = "campus_exchange_products"
+    TUTORS_TABLE: str = "campus_exchange_tutors"
+    # Point this at a DynamoDB Local endpoint (e.g. http://localhost:8000) for offline
+    # development/testing. Leave unset to talk to real AWS DynamoDB.
+    DYNAMODB_ENDPOINT_URL: str | None = None
 
     # openssl rand -hex 32
     SECRET_KEY: str = "dev-secret-key-change-me"
