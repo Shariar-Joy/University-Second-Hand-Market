@@ -60,12 +60,22 @@ def _table_exists(table_name: str) -> bool:
         return False
 
 
-def _ensure_users_table() -> None:
-    if _table_exists(settings.USERS_TABLE):
+def _create_table_idempotent(table_name: str, **create_table_kwargs: Any) -> None:
+    if _table_exists(table_name):
         return
-    logger.info("Creating DynamoDB table %s", settings.USERS_TABLE)
-    _client.create_table(
-        TableName=settings.USERS_TABLE,
+    logger.info("Creating DynamoDB table %s", table_name)
+    try:
+        _client.create_table(TableName=table_name, **create_table_kwargs)
+    except _client.exceptions.ResourceInUseException:
+        # Lambda can spin up several concurrent cold starts on first deploy; another one
+        # already won the race to create this table. Just wait for it to become active.
+        logger.info("Table %s is already being created by another invocation", table_name)
+    _client.get_waiter("table_exists").wait(TableName=table_name)
+
+
+def _ensure_users_table() -> None:
+    _create_table_idempotent(
+        settings.USERS_TABLE,
         KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
         AttributeDefinitions=[
             {"AttributeName": "id", "AttributeType": "S"},
@@ -86,23 +96,55 @@ def _ensure_users_table() -> None:
         ],
         BillingMode="PAY_PER_REQUEST",
     )
-    _client.get_waiter("table_exists").wait(TableName=settings.USERS_TABLE)
 
 
 def _ensure_simple_table(table_name: str) -> None:
-    if _table_exists(table_name):
-        return
-    logger.info("Creating DynamoDB table %s", table_name)
-    _client.create_table(
-        TableName=table_name,
+    _create_table_idempotent(
+        table_name,
         KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
         AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
         BillingMode="PAY_PER_REQUEST",
     )
-    _client.get_waiter("table_exists").wait(TableName=table_name)
+
+
+def scan_all(table: Any) -> list[dict[str, Any]]:
+    """Scan an entire table, following pagination until every item has been read."""
+    items: list[dict[str, Any]] = []
+    response = table.scan()
+    items.extend(response.get("Items", []))
+    while "LastEvaluatedKey" in response:
+        response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        items.extend(response.get("Items", []))
+    return items
+
+
+def seed_if_empty(table: Any, seed_data: list[dict[str, Any]], label: str) -> None:
+    """Populate a table with fixed seed data, but only the first time it's ever empty."""
+    existing = table.scan(Limit=1)
+    if existing.get("Count", 0) > 0:
+        return
+    logger.info("Seeding %d %s", len(seed_data), label)
+    seeded_at = now_iso()
+    with table.batch_writer() as batch:
+        for item in seed_data:
+            batch.put_item(Item={**item, "created_at": seeded_at})
+
+
+_initialized = False
 
 
 def init_db() -> None:
+    # Under Mangum, the ASGI lifespan (and therefore this function, via FastAPI's lifespan
+    # handler) runs on *every* Lambda invocation, not just cold starts -- there's no reliable
+    # shutdown signal in Lambda's execution model, so Mangum conservatively repeats the full
+    # lifespan cycle each time. Module-level state survives across warm invocations of the same
+    # container, so this guard keeps the actual table-creation/seed-check calls to once per
+    # container instead of once per request. Local `uvicorn` runs (and each fresh Lambda
+    # container) still get exactly one real initialization, same as before.
+    global _initialized
+    if _initialized:
+        return
+
     # Local imports to avoid a circular import (products/tutors seed helpers import this module).
     from app.db.products import seed_products
     from app.db.tutors import seed_tutors
@@ -117,3 +159,4 @@ def init_db() -> None:
 
     seed_products()
     seed_tutors()
+    _initialized = True

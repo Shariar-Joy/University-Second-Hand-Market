@@ -3,7 +3,7 @@ from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 
-from app.db.dynamodb import DynamoDBError, now_iso, products_table
+from app.db.dynamodb import DynamoDBError, products_table, scan_all, seed_if_empty
 
 logger = logging.getLogger(__name__)
 
@@ -112,14 +112,8 @@ _PRODUCT_SEED = [
 
 
 def list_products() -> list[dict[str, Any]]:
-    table = products_table()
-    items: list[dict[str, Any]] = []
     try:
-        response = table.scan()
-        items.extend(response.get("Items", []))
-        while "LastEvaluatedKey" in response:
-            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
-            items.extend(response.get("Items", []))
+        items = scan_all(products_table())
     except (ClientError, BotoCoreError) as exc:
         logger.exception("Failed to list products")
         raise DynamoDBError("Could not load products right now. Please try again.") from exc
@@ -127,16 +121,8 @@ def list_products() -> list[dict[str, Any]]:
 
 
 def seed_products() -> None:
-    table = products_table()
     try:
-        existing = table.scan(Limit=1)
-        if existing.get("Count", 0) > 0:
-            return
-        logger.info("Seeding %d products", len(_PRODUCT_SEED))
-        seeded_at = now_iso()
-        with table.batch_writer() as batch:
-            for item in _PRODUCT_SEED:
-                batch.put_item(Item={**item, "created_at": seeded_at})
+        seed_if_empty(products_table(), _PRODUCT_SEED, "products")
     except (ClientError, BotoCoreError) as exc:
         logger.exception("Failed to seed products")
         raise DynamoDBError("Could not initialize product data.") from exc

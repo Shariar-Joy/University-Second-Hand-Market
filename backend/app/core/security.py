@@ -7,23 +7,43 @@ import jwt
 
 from app.core.config import settings
 
-PBKDF2_ITERATIONS = 260_000
+# OWASP's current minimum recommendation for PBKDF2-HMAC-SHA256 (2023 revision of the Password
+# Storage Cheat Sheet). The count is embedded in every new hash (see hash_password) so it can be
+# raised again later without invalidating existing password hashes.
+PBKDF2_ITERATIONS = 600_000
+# Hashes created before the iteration count was embedded in the stored string (2-part
+# "salt$digest" format) used this fixed count. Kept only so verify_password can still check
+# passwords set before this change; never used for newly created hashes.
+_LEGACY_PBKDF2_ITERATIONS = 260_000
 
 
 def hash_password(password: str) -> str:
     salt = os.urandom(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
-    return f"{salt.hex()}${digest.hex()}"
+    return f"{PBKDF2_ITERATIONS}${salt.hex()}${digest.hex()}"
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
+    parts = stored_hash.split("$")
+    if len(parts) == 3:
+        iterations_str, salt_hex, digest_hex = parts
+        try:
+            iterations = int(iterations_str)
+        except ValueError:
+            return False
+    elif len(parts) == 2:
+        iterations = _LEGACY_PBKDF2_ITERATIONS
+        salt_hex, digest_hex = parts
+    else:
+        return False
+
     try:
-        salt_hex, digest_hex = stored_hash.split("$", 1)
+        salt = bytes.fromhex(salt_hex)
+        expected = bytes.fromhex(digest_hex)
     except ValueError:
         return False
-    salt = bytes.fromhex(salt_hex)
-    expected = bytes.fromhex(digest_hex)
-    candidate = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
+
+    candidate = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
     return hmac.compare_digest(candidate, expected)
 
 

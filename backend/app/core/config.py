@@ -1,5 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Exposed so callers (e.g. the startup warning in app/main.py) can detect this exact default
+# without duplicating the literal string.
+INSECURE_DEFAULT_SECRET_KEY = "dev-secret-key-change-me"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -16,7 +20,7 @@ class Settings(BaseSettings):
     DYNAMODB_ENDPOINT_URL: str | None = None
 
     # openssl rand -hex 32
-    SECRET_KEY: str = "dev-secret-key-change-me"
+    SECRET_KEY: str = INSECURE_DEFAULT_SECRET_KEY
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     REMEMBER_ME_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days
