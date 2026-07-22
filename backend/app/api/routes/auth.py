@@ -10,6 +10,13 @@ from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserOu
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Computed once at import so a login attempt against a nonexistent email still pays the same
+# password-hashing cost as one against a real account. Without this, `verify_password` would
+# only ever run for existing emails (Python's `or` short-circuits it away otherwise), making the
+# response time itself leak whether a given email is registered -- even though the error message
+# is identical either way.
+_DUMMY_PASSWORD_HASH = hash_password("not-a-real-password-used-only-for-timing-safety")
+
 
 def _row_to_user_out(row: dict[str, Any]) -> UserOut:
     return UserOut(
@@ -63,17 +70,19 @@ def register(payload: RegisterRequest, response: Response):
         }
     )
 
-    _set_auth_cookie(response, user_row["id"], remember_me=False)
+    _set_auth_cookie(response, int(user_row["id"]), remember_me=False)
     return AuthResponse(user=_row_to_user_out(user_row))
 
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, response: Response):
     user_row = get_user_by_email(payload.email)
-    if user_row is None or not verify_password(payload.password, user_row["password_hash"]):
+    password_hash = user_row["password_hash"] if user_row is not None else _DUMMY_PASSWORD_HASH
+    password_is_valid = verify_password(payload.password, password_hash)
+    if user_row is None or not password_is_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
 
-    _set_auth_cookie(response, user_row["id"], remember_me=payload.remember_me)
+    _set_auth_cookie(response, int(user_row["id"]), remember_me=payload.remember_me)
     return AuthResponse(user=_row_to_user_out(user_row))
 
 

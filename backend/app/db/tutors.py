@@ -3,7 +3,7 @@ from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 
-from app.db.dynamodb import DynamoDBError, now_iso, to_decimal, tutors_table
+from app.db.dynamodb import DynamoDBError, scan_all, seed_if_empty, to_decimal, tutors_table
 
 logger = logging.getLogger(__name__)
 
@@ -92,14 +92,8 @@ _TUTOR_SEED = [
 
 
 def list_tutors() -> list[dict[str, Any]]:
-    table = tutors_table()
-    items: list[dict[str, Any]] = []
     try:
-        response = table.scan()
-        items.extend(response.get("Items", []))
-        while "LastEvaluatedKey" in response:
-            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
-            items.extend(response.get("Items", []))
+        items = scan_all(tutors_table())
     except (ClientError, BotoCoreError) as exc:
         logger.exception("Failed to list tutors")
         raise DynamoDBError("Could not load tutors right now. Please try again.") from exc
@@ -107,16 +101,8 @@ def list_tutors() -> list[dict[str, Any]]:
 
 
 def seed_tutors() -> None:
-    table = tutors_table()
     try:
-        existing = table.scan(Limit=1)
-        if existing.get("Count", 0) > 0:
-            return
-        logger.info("Seeding %d tutors", len(_TUTOR_SEED))
-        seeded_at = now_iso()
-        with table.batch_writer() as batch:
-            for item in _TUTOR_SEED:
-                batch.put_item(Item={**item, "created_at": seeded_at})
+        seed_if_empty(tutors_table(), _TUTOR_SEED, "tutors")
     except (ClientError, BotoCoreError) as exc:
         logger.exception("Failed to seed tutors")
         raise DynamoDBError("Could not initialize tutor data.") from exc
