@@ -1,4 +1,4 @@
-import sqlite3
+from typing import Any
 
 from fastapi import APIRouter
 
@@ -8,14 +8,14 @@ from app.schemas.products import ProductOut
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-def _row_to_product_out(row: sqlite3.Row) -> ProductOut:
+def _row_to_product_out(row: dict[str, Any]) -> ProductOut:
     return ProductOut(
-        id=row["id"],
+        id=int(row["id"]),
         slug=row["slug"],
         name=row["name"],
         category=row["category"],
         condition=row["condition"],
-        price=row["price"],
+        price=int(row["price"]),
         seller=row["seller"],
         university=row["university"],
         created_at=row["created_at"],

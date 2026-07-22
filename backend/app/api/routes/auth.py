@@ -1,4 +1,4 @@
-import sqlite3
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
@@ -11,9 +11,9 @@ from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserOu
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _row_to_user_out(row: sqlite3.Row) -> UserOut:
+def _row_to_user_out(row: dict[str, Any]) -> UserOut:
     return UserOut(
-        id=row["id"],
+        id=int(row["id"]),
         full_name=row["full_name"],
         username=row["username"],
         email=row["email"],
@@ -83,5 +83,5 @@ def logout(response: Response):
 
 
 @router.get("/me", response_model=AuthResponse)
-def me(current_user: sqlite3.Row = Depends(get_current_user)):
+def me(current_user: dict[str, Any] = Depends(get_current_user)):
     return AuthResponse(user=_row_to_user_out(current_user))
