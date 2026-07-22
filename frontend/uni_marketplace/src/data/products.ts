@@ -30,18 +30,7 @@ export type ProductCategory =
   | 'Instruments'
   | 'Other'
 
-export interface Product {
-  id: string
-  name: string
-  category: ProductCategory
-  condition: ProductCondition
-  price: number
-  seller: string
-  university: string
-  image?: string
-}
-
-export const categoryImages: Record<ProductCategory, string> = {
+const categoryImages: Record<ProductCategory, string> = {
   Books: booksImg,
   Electronics: electronicsImg,
   Furniture: furnitureImg,
@@ -53,115 +42,23 @@ export const categoryImages: Record<ProductCategory, string> = {
   Other: otherImg,
 }
 
-export const categoryIcons: Record<ProductCategory, string> = {
-  Books: '📚',
-  Electronics: '💻',
-  Furniture: '🪑',
-  Clothing: '👕',
-  Bicycles: '🚲',
-  Sports: '⚽',
-  Stationery: '✏️',
-  Instruments: '🎸',
-  Other: '📦',
+// Real photos for specific products (keyed by the backend's stable `slug`), falling back to a
+// generic category illustration for products without one.
+const productImages: Record<string, string> = {
+  p1: calculusTextbookImg,
+  p2: laptopImg,
+  p4: casioCalculatorImg,
+  p6: badmintonSetImg,
+  p7: guitarImg,
+  p8: beanBagSofaImg,
+  p9: winterHoodieImg,
+  p10: dsaTextbookImg,
 }
 
-export const products: Product[] = [
-  {
-    id: 'p1',
-    name: 'Calculus: Early Transcendentals (10th Ed)',
-    category: 'Books',
-    condition: 'Good',
-    price: 650,
-    seller: 'Rafiul Islam',
-    university: 'North South University',
-    image: calculusTextbookImg,
-  },
-  {
-    id: 'p2',
-    name: 'HP Pavilion Laptop (i5, 8GB RAM)',
-    category: 'Electronics',
-    condition: 'Like New',
-    price: 42000,
-    seller: 'Nusrat Jahan',
-    university: 'BRAC University',
-    image: laptopImg,
-  },
-  {
-    id: 'p3',
-    name: 'Study Table with Chair',
-    category: 'Furniture',
-    condition: 'Good',
-    price: 3200,
-    seller: 'Tanvir Ahmed',
-    university: 'University of Dhaka',
-  },
-  {
-    id: 'p4',
-    name: 'Casio fx-991EX Scientific Calculator',
-    category: 'Stationery',
-    condition: 'New',
-    price: 1450,
-    seller: 'Farhana Akter',
-    university: 'BUET',
-    image: casioCalculatorImg,
-  },
-  {
-    id: 'p5',
-    name: 'Duranta Frontier Bicycle',
-    category: 'Bicycles',
-    condition: 'Fair',
-    price: 8500,
-    seller: 'Shafiul Karim',
-    university: 'Ahsanullah University of Science and Technology',
-  },
-  {
-    id: 'p6',
-    name: 'Badminton Racket Set (2 rackets + shuttles)',
-    category: 'Sports',
-    condition: 'Good',
-    price: 900,
-    seller: 'Mahin Chowdhury',
-    university: 'Independent University, Bangladesh',
-    image: badmintonSetImg,
-  },
-  {
-    id: 'p7',
-    name: 'Yamaha F310 Acoustic Guitar',
-    category: 'Instruments',
-    condition: 'Like New',
-    price: 9500,
-    seller: 'Adiba Rahman',
-    university: 'Jahangirnagar University',
-    image: guitarImg,
-  },
-  {
-    id: 'p8',
-    name: 'Bean bag sofa',
-    category: 'Furniture',
-    condition: 'Fair',
-    price: 2200,
-    seller: 'Imran Hossain',
-    university: 'University of Chittagong',
-    image: beanBagSofaImg,
-  },
-  {
-    id: 'p9',
-    name: 'Winter Hoodie — Varsity Fest Edition',
-    category: 'Clothing',
-    condition: 'New',
-    price: 850,
-    seller: 'Sadia Islam',
-    university: 'North South University',
-    image: winterHoodieImg,
-  },
-  {
-    id: 'p10',
-    name: 'Data Structures & Algorithms in C++ (Textbook)',
-    category: 'Books',
-    condition: 'Good',
-    price: 550,
-    seller: 'Rakibul Hasan',
-    university: 'BRAC University',
-    image: dsaTextbookImg,
-  },
-]
+export function getCategoryImage(category: string): string {
+  return categoryImages[category as ProductCategory] ?? otherImg
+}
+
+export function getProductImage(product: { slug: string; category: string }): string {
+  return productImages[product.slug] ?? getCategoryImage(product.category)
+}
