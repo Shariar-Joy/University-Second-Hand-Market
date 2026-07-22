@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
-  background-image: url('../../assets/login-bg.svg');
+  background-image: url('../../assets/login_bg_2.avif');
   background-size: cover;
   background-position: center;
 }
@@ -56,6 +56,15 @@
 .formError {
   background-color: var(--color-danger-soft);
   color: var(--color-danger);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-4);
+}
+
+.formSuccess {
+  background-color: var(--color-success-soft);
+  color: var(--color-success);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   font-size: var(--font-size-sm);

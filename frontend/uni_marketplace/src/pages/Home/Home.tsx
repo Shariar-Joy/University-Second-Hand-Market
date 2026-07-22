@@ -1,87 +1,84 @@
-import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import Button from '../../components/common/Button'
-import * as authService from '../../services/authService'
+import { useMemo, useState } from 'react'
+import SearchBar from '../../components/common/SearchBar'
+import ProductCard from '../../components/product/ProductCard'
+import TutorCard from '../../components/tutor/TutorCard'
+import { useAuth } from '../../context/AuthContext'
+import { products } from '../../data/products'
+import { tutors } from '../../data/tutors'
 import { APP_NAME, APP_TAGLINE } from '../../constants'
-import { ROUTES } from '../../routes/routePaths'
 import styles from './Home.module.css'
 
-interface LocationState {
-  justAuthed?: boolean
-  name?: string
-}
-
 function Home() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const state = location.state as LocationState | null
+  const { user } = useAuth()
+  const [query, setQuery] = useState('')
 
-  const [displayName, setDisplayName] = useState<string | null>(state?.justAuthed ? (state.name ?? null) : null)
-  const [checkedSession, setCheckedSession] = useState(Boolean(state?.justAuthed))
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const normalizedQuery = query.trim().toLowerCase()
 
-  useEffect(() => {
-    if (state?.justAuthed) return
+  const filteredProducts = useMemo(() => {
+    if (!normalizedQuery) return products
+    return products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(normalizedQuery) ||
+        product.category.toLowerCase().includes(normalizedQuery),
+    )
+  }, [normalizedQuery])
 
-    let isMounted = true
-    authService
-      .fetchCurrentUser()
-      .then((user) => {
-        if (isMounted) setDisplayName(user.fullName)
-      })
-      .catch(() => {
-        if (isMounted) setDisplayName(null)
-      })
-      .finally(() => {
-        if (isMounted) setCheckedSession(true)
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [state?.justAuthed])
-
-  async function handleLogout() {
-    setIsLoggingOut(true)
-    try {
-      await authService.logout()
-    } finally {
-      setIsLoggingOut(false)
-      setDisplayName(null)
-      navigate(ROUTES.HOME, { replace: true })
-    }
-  }
-
-  const isAuthenticated = Boolean(displayName)
-
-  if (!checkedSession) {
-    return <div className={styles.wrapper} />
-  }
+  const filteredTutors = useMemo(() => {
+    if (!normalizedQuery) return tutors
+    return tutors.filter(
+      (tutor) =>
+        tutor.name.toLowerCase().includes(normalizedQuery) ||
+        tutor.subjects.some((subject) => subject.toLowerCase().includes(normalizedQuery)),
+    )
+  }, [normalizedQuery])
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.card}>
-        {isAuthenticated && <span className={styles.badge}>You're signed in</span>}
-        <h1 className={styles.title}>{isAuthenticated ? `Welcome, ${displayName}!` : `Welcome to ${APP_NAME}`}</h1>
-        <p className={styles.subtitle}>{APP_TAGLINE}</p>
-
-        <div className={styles.actions}>
-          {isAuthenticated ? (
-            <Button variant="outline" size="lg" onClick={handleLogout} disabled={isLoggingOut}>
-              {isLoggingOut ? 'Logging out…' : 'Log Out'}
-            </Button>
-          ) : (
-            <>
-              <Button to={ROUTES.LOGIN} variant="outline" size="lg">
-                Log In
-              </Button>
-              <Button to={ROUTES.REGISTER} size="lg">
-                Create Account
-              </Button>
-            </>
-          )}
+    <div className={styles.page}>
+      <section className={styles.hero}>
+        <h1 className={styles.heroTitle}>
+          {user ? `Welcome back, ${user.fullName.split(' ')[0]}!` : `Welcome to ${APP_NAME}`}
+        </h1>
+        <p className={styles.heroSubtitle}>{APP_TAGLINE}</p>
+        <div className={styles.searchWrapper}>
+          <SearchBar value={query} onChange={setQuery} placeholder="Search products or tutors…" />
         </div>
-      </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2>Products for Sale</h2>
+          <span className={styles.count}>
+            {filteredProducts.length} listing{filteredProducts.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        {filteredProducts.length > 0 ? (
+          <div className={styles.productGrid}>
+            {filteredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <p className={styles.empty}>No products match your search.</p>
+        )}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2>Tutors</h2>
+          <span className={styles.count}>
+            {filteredTutors.length} tutor{filteredTutors.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        {filteredTutors.length > 0 ? (
+          <div className={styles.tutorGrid}>
+            {filteredTutors.map((tutor) => (
+              <TutorCard key={tutor.id} tutor={tutor} />
+            ))}
+          </div>
+        ) : (
+          <p className={styles.empty}>No tutors match your search.</p>
+        )}
+      </section>
     </div>
   )
 }

@@ -85,7 +85,7 @@ function Register() {
 
     setIsSubmitting(true)
     try {
-      const user = await authService.register({
+      await authService.register({
         fullName: values.fullName.trim(),
         username: values.username.trim(),
         email: values.email.trim(),
@@ -96,7 +96,7 @@ function Register() {
         password: values.password,
         confirmPassword: values.confirmPassword,
       })
-      navigate(ROUTES.HOME, { state: { justAuthed: true, name: user.fullName } })
+      navigate(ROUTES.LOGIN, { state: { justRegistered: true, email: values.email.trim() } })
     } catch (error) {
       setFormError(extractErrorMessage(error, 'Could not create your account. Please try again.'))
     } finally {

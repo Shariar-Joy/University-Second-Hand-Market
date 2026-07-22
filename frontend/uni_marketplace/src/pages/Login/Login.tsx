@@ -1,17 +1,26 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Input from '../../components/common/Input'
 import Button from '../../components/common/Button'
 import * as authService from '../../services/authService'
+import { useAuth } from '../../context/AuthContext'
 import { extractErrorMessage } from '../../utils/errorMessage'
 import { APP_NAME } from '../../constants'
 import { ROUTES } from '../../routes/routePaths'
 import styles from './Login.module.css'
 
+interface LocationState {
+  justRegistered?: boolean
+  email?: string
+}
+
 function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { setUser } = useAuth()
+  const state = location.state as LocationState | null
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(state?.email ?? '')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
@@ -38,7 +47,8 @@ function Login() {
     setIsSubmitting(true)
     try {
       const user = await authService.login({ email, password, rememberMe })
-      navigate(ROUTES.HOME, { state: { justAuthed: true, name: user.fullName } })
+      setUser(user)
+      navigate(ROUTES.HOME, { replace: true })
     } catch (error) {
       setFormError(extractErrorMessage(error, 'Invalid email or password.'))
     } finally {
@@ -51,6 +61,12 @@ function Login() {
       <div className={styles.card}>
         <h1 className={styles.title}>Welcome back</h1>
         <p className={styles.subtitle}>Log in to {APP_NAME} with your university email.</p>
+
+        {state?.justRegistered && !formError && (
+          <p className={styles.formSuccess} role="status">
+            Account created! Please log in.
+          </p>
+        )}
 
         {formError && (
           <p className={styles.formError} role="alert">
