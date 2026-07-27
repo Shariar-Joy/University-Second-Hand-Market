@@ -2,11 +2,13 @@
 
 ## Option A: `render.yaml` (recommended)
 
-This repo includes `backend/render.yaml`, a Render "Blueprint" spec.
+This repo includes `render.yaml` at the **repository root** — Render's Blueprint scanner only
+looks for it there, even though the service itself lives in `backend/` (that's what the
+`rootDir: backend` field inside the file is for).
 
 1. Push this branch/repo to GitHub.
 2. In the Render dashboard, choose **New > Blueprint** and point it at the repo.
-3. Render reads `backend/render.yaml` and creates a `campus-exchange-api` web service with:
+3. Render reads `render.yaml` and creates a `campus-exchange-api` web service with:
    - `rootDir: backend`
    - Build: `pip install -r requirements.txt`
    - Start: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
