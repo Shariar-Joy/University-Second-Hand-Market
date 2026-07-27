@@ -1,6 +1,7 @@
 import re
+from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
 
 # Mirrors frontend/uni_marketplace/src/utils/emailValidation.ts — keep both in sync.
 PERSONAL_EMAIL_DOMAINS = {
@@ -91,6 +92,8 @@ class LoginRequest(BaseModel):
 
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     full_name: str
     username: str
@@ -99,7 +102,8 @@ class UserOut(BaseModel):
     department: str
     student_id: str
     phone: str | None = None
-    created_at: str
+    profile_image: str | None = None
+    created_at: datetime
 
 
 class AuthResponse(BaseModel):

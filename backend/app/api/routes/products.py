@@ -1,27 +1,13 @@
-from typing import Any
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
-from fastapi import APIRouter
-
-from app.db.products import list_products
+from app.core.database import get_db
 from app.schemas.products import ProductOut
+from app.services import product_service
 
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-def _row_to_product_out(row: dict[str, Any]) -> ProductOut:
-    return ProductOut(
-        id=int(row["id"]),
-        slug=row["slug"],
-        name=row["name"],
-        category=row["category"],
-        condition=row["condition"],
-        price=int(row["price"]),
-        seller=row["seller"],
-        university=row["university"],
-        created_at=row["created_at"],
-    )
-
-
 @router.get("", response_model=list[ProductOut])
-def get_products():
-    return [_row_to_product_out(row) for row in list_products()]
+def get_products(db: Session = Depends(get_db)):
+    return product_service.list_all(db)
