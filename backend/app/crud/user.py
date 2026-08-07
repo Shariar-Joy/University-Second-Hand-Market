@@ -33,3 +33,16 @@ def create(db: Session, data: dict[str, Any]) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def update(db: Session, user: User, data: dict[str, Any]) -> User:
+    for key, value in data.items():
+        setattr(user, key, value)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def delete(db: Session, user: User) -> None:
+    db.delete(user)
+    db.commit()

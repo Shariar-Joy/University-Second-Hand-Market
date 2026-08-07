@@ -1,5 +1,6 @@
 interface AvatarProps {
   name: string
+  src?: string | null
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }
@@ -28,7 +29,23 @@ function colorFor(name: string): string {
   return `hsl(${hue}, 70%, 45%)`
 }
 
-function Avatar({ name, size = 'md', className }: AvatarProps) {
+function Avatar({ name, src, size = 'md', className }: AvatarProps) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={[
+          'inline-flex shrink-0 rounded-full object-cover ring-2 ring-white select-none',
+          SIZE_CLASSES[size],
+          className,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      />
+    )
+  }
+
   return (
     <span
       className={[

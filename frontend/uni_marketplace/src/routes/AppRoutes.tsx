@@ -72,9 +72,11 @@ function AppRoutes() {
         <Route
           path={ROUTES.PROFILE}
           element={
-            <PageTransition>
-              <Profile />
-            </PageTransition>
+            <RequireAuth>
+              <PageTransition>
+                <Profile />
+              </PageTransition>
+            </RequireAuth>
           }
         />
         <Route

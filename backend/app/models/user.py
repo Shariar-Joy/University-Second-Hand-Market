@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -19,11 +19,17 @@ class User(Base):
     university: Mapped[str] = mapped_column(String(150), nullable=False)
     student_id: Mapped[str] = mapped_column(String(50), nullable=False)
     profile_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    products: Mapped[list["Product"]] = relationship(back_populates="seller_account")  # noqa: F821
+    products: Mapped[list["Product"]] = relationship(  # noqa: F821
+        foreign_keys="Product.seller_id", back_populates="seller_account"
+    )
+    purchases: Mapped[list["Product"]] = relationship(  # noqa: F821
+        foreign_keys="Product.buyer_id", back_populates="buyer_account"
+    )
     tutor_profiles: Mapped[list["Tutor"]] = relationship(back_populates="user")  # noqa: F821
