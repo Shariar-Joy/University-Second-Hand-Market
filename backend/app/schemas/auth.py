@@ -103,8 +103,49 @@ class UserOut(BaseModel):
     student_id: str
     phone: str | None = None
     profile_image: str | None = None
+    bio: str | None = None
     created_at: datetime
 
 
 class AuthResponse(BaseModel):
     user: UserOut
+
+
+class UpdateProfileRequest(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    department: str | None = None
+    university: str | None = None
+    bio: str | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and len(value.strip()) < 2:
+            raise ValueError("Enter your full name.")
+        return value.strip() if value is not None else value
+
+    @field_validator("department")
+    @classmethod
+    def department_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("Enter your department.")
+        return value
+
+    @field_validator("university")
+    @classmethod
+    def university_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("Select your university.")
+        return value
+
+    @field_validator("bio")
+    @classmethod
+    def bio_length(cls, value: str | None) -> str | None:
+        if value is not None and len(value) > 500:
+            raise ValueError("Bio must be 500 characters or fewer.")
+        return value
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str

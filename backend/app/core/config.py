@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # Cookies over plain http only work with secure=False; flip this on once served over https.
     COOKIE_SECURE: bool = False
 
+    # Avatar image storage (Cloudinary). Empty by default so importing config without these set
+    # doesn't crash local dev -- the upload call itself fails loudly if left unconfigured.
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_csv_origins(cls, value: object) -> object:

@@ -14,4 +14,10 @@ class ProductOut(BaseModel):
     price: int
     seller: str
     university: str
+    status: str
+    buyer_name: str | None = None
     created_at: datetime
+
+
+class MarkSoldRequest(BaseModel):
+    buyer_identifier: str | None = None

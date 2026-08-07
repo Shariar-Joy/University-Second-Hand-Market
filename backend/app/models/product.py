@@ -21,13 +21,26 @@ class Product(Base):
     seller_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    buyer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     images: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="available")
+    sold_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    seller_account: Mapped["User | None"] = relationship(back_populates="products")  # noqa: F821
+    seller_account: Mapped["User | None"] = relationship(  # noqa: F821
+        foreign_keys=[seller_id], back_populates="products"
+    )
+    buyer_account: Mapped["User | None"] = relationship(  # noqa: F821
+        foreign_keys=[buyer_id], back_populates="purchases"
+    )
+
+    @property
+    def buyer_name(self) -> str | None:
+        return self.buyer_account.full_name if self.buyer_account else None

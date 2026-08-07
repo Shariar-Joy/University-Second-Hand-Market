@@ -9,25 +9,30 @@ export interface User {
   department: string
   studentId: string
   phone?: string | null
+  profileImage?: string | null
+  bio?: string | null
   createdAt: string
 }
 
-interface AuthResponse {
-  user: {
-    id: number
-    full_name: string
-    username: string
-    email: string
-    university: string
-    department: string
-    student_id: string
-    phone: string | null
-    created_at: string
-  }
+interface RawUser {
+  id: number
+  full_name: string
+  username: string
+  email: string
+  university: string
+  department: string
+  student_id: string
+  phone: string | null
+  profile_image: string | null
+  bio: string | null
+  created_at: string
 }
 
-function toUser(response: AuthResponse): User {
-  const { user } = response
+interface AuthResponse {
+  user: RawUser
+}
+
+function toUser(user: RawUser): User {
   return {
     id: user.id,
     fullName: user.full_name,
@@ -37,6 +42,8 @@ function toUser(response: AuthResponse): User {
     department: user.department,
     studentId: user.student_id,
     phone: user.phone,
+    profileImage: user.profile_image,
+    bio: user.bio,
     createdAt: user.created_at,
   }
 }
@@ -59,13 +66,21 @@ export interface RegisterPayload {
   confirmPassword: string
 }
 
+export interface UpdateProfilePayload {
+  fullName?: string
+  phone?: string
+  department?: string
+  university?: string
+  bio?: string
+}
+
 export async function login(payload: LoginPayload): Promise<User> {
   const response = await apiClient.post<AuthResponse>('/auth/login', {
     email: payload.email,
     password: payload.password,
     remember_me: payload.rememberMe,
   })
-  return toUser(response)
+  return toUser(response.user)
 }
 
 export async function register(payload: RegisterPayload): Promise<User> {
@@ -80,7 +95,7 @@ export async function register(payload: RegisterPayload): Promise<User> {
     password: payload.password,
     confirm_password: payload.confirmPassword,
   })
-  return toUser(response)
+  return toUser(response.user)
 }
 
 export async function logout(): Promise<void> {
@@ -89,5 +104,27 @@ export async function logout(): Promise<void> {
 
 export async function fetchCurrentUser(): Promise<User> {
   const response = await apiClient.get<AuthResponse>('/auth/me')
-  return toUser(response)
+  return toUser(response.user)
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  const raw = await apiClient.patch<RawUser>('/users/me', {
+    full_name: payload.fullName,
+    phone: payload.phone,
+    department: payload.department,
+    university: payload.university,
+    bio: payload.bio,
+  })
+  return toUser(raw)
+}
+
+export async function uploadAvatar(file: File): Promise<User> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const raw = await apiClient.postForm<RawUser>('/users/me/avatar', formData)
+  return toUser(raw)
+}
+
+export async function deleteAccount(password: string): Promise<void> {
+  await apiClient.del('/users/me', { password })
 }

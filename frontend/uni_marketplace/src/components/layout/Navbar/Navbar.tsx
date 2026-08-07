@@ -86,7 +86,7 @@ function Navbar() {
 
           {user ? (
             <Link to={ROUTES.PROFILE} className="ml-1" aria-label="Profile">
-              <Avatar name={user.fullName} size="sm" />
+              <Avatar name={user.fullName} src={user.profileImage} size="sm" />
             </Link>
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
@@ -133,7 +133,7 @@ function Navbar() {
         {user ? (
           <div className="mt-6 border-t border-border pt-5">
             <Link to={ROUTES.PROFILE} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-slate-50">
-              <Avatar name={user.fullName} size="md" />
+              <Avatar name={user.fullName} src={user.profileImage} size="md" />
               <div>
                 <p className="text-sm font-semibold text-ink">{user.fullName}</p>
                 <p className="text-xs text-ink-soft">View profile</p>
