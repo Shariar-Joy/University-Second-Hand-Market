@@ -1,10 +1,10 @@
 import { BrowserRouter } from 'react-router-dom'
 import AppRoutes from './routes/AppRoutes'
 import Navbar from './components/layout/Navbar'
+import Footer from './components/layout/Footer'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { ToastProvider } from './context/ToastContext'
-import styles from './App.module.css'
 
 function App() {
   return (
@@ -13,9 +13,10 @@ function App() {
         <ToastProvider>
           <BrowserRouter>
             <Navbar />
-            <main className={styles.main}>
+            <main className="flex flex-1 flex-col">
               <AppRoutes />
             </main>
+            <Footer />
           </BrowserRouter>
         </ToastProvider>
       </CartProvider>
