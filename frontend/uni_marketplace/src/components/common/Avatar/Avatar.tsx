@@ -1,8 +1,13 @@
-import styles from './Avatar.module.css'
-
 interface AvatarProps {
   name: string
   size?: 'sm' | 'md' | 'lg'
+  className?: string
+}
+
+const SIZE_CLASSES: Record<NonNullable<AvatarProps['size']>, string> = {
+  sm: 'h-8 w-8 text-xs',
+  md: 'h-10 w-10 text-sm',
+  lg: 'h-16 w-16 text-lg',
 }
 
 function initialsFor(name: string): string {
@@ -20,12 +25,21 @@ function colorFor(name: string): string {
     hash = name.charCodeAt(i) + ((hash << 5) - hash)
   }
   const hue = Math.abs(hash) % 360
-  return `hsl(${hue}, 65%, 55%)`
+  return `hsl(${hue}, 70%, 45%)`
 }
 
-function Avatar({ name, size = 'md' }: AvatarProps) {
+function Avatar({ name, size = 'md', className }: AvatarProps) {
   return (
-    <span className={[styles.avatar, styles[size]].join(' ')} style={{ backgroundColor: colorFor(name) }}>
+    <span
+      className={[
+        'inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-white select-none',
+        SIZE_CLASSES[size],
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={{ backgroundColor: colorFor(name) }}
+    >
       {initialsFor(name) || '?'}
     </span>
   )
