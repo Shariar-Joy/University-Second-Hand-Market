@@ -15,7 +15,11 @@ Problem Discovery -> Requirement Elicitation -> Product Requirements Document (P
 | Database | PostgreSQL (SQL) |
 | Authentication | JSON Web Token (JWT) |
 | Image Storage | Cloudinary (or local storage) |
-| Deployment | Docker |
+| Deployment 
+| Frontend | Vercel | 
+| Backend | Render |
+| Database | Neon |
+
  
 ## Documentation
 All detailed artifacts are under [`Docs/`](Docs), with full navigation in:
