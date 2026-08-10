@@ -11,6 +11,7 @@ import {
   Package,
   Pencil,
   Phone,
+  Plus,
   ShoppingBag,
   Tag,
   Trash2,
@@ -23,6 +24,7 @@ import Modal from '../../components/ui/Modal'
 import EmptyState from '../../components/ui/EmptyState'
 import { ProductCardSkeleton, ProfileSkeleton } from '../../components/ui/LoadingSkeleton'
 import ProductCard from '../../components/product/ProductCard'
+import ListingActions from '../../components/product/ListingActions'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { ApiError } from '../../services/apiClient'
@@ -82,10 +84,6 @@ function Profile() {
   })
   const [loadingTab, setLoadingTab] = useState<TabKey | null>(null)
 
-  const [soldModalProduct, setSoldModalProduct] = useState<Product | null>(null)
-  const [buyerIdentifier, setBuyerIdentifier] = useState('')
-  const [isMarkingSold, setIsMarkingSold] = useState(false)
-
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
   const [deleteError, setDeleteError] = useState('')
@@ -110,6 +108,19 @@ function Profile() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeTab])
+
+  function handleListingUpdated(updated: Product) {
+    setListingsByTab((previous) => ({
+      ...previous,
+      mine: (previous.mine ?? []).map((item) => (item.id === updated.id ? updated : item)),
+      sold: null,
+    }))
+  }
+
+  async function handleListingDeleted() {
+    setListingsByTab((previous) => ({ ...previous, mine: null, sold: null }))
+    await fetchTab('mine')
+  }
 
   async function handleLogout() {
     setIsLoggingOut(true)
@@ -198,29 +209,6 @@ function Profile() {
       showToast(errorMessage(error, 'Could not update profile. Please try again.'), 'error')
     } finally {
       setIsSavingProfile(false)
-    }
-  }
-
-  function openSoldModal(product: Product) {
-    setSoldModalProduct(product)
-    setBuyerIdentifier('')
-  }
-
-  async function handleConfirmSold(event: FormEvent) {
-    event.preventDefault()
-    if (!soldModalProduct) return
-
-    setIsMarkingSold(true)
-    try {
-      await productService.markAsSold(soldModalProduct.id, buyerIdentifier.trim() || undefined)
-      setListingsByTab((previous) => ({ ...previous, mine: null, sold: null }))
-      setSoldModalProduct(null)
-      showToast('Listing marked as sold.', 'success')
-      await fetchTab(activeTab === 'sold' ? 'sold' : 'mine')
-    } catch (error) {
-      showToast(errorMessage(error, 'Could not mark this listing as sold.'), 'error')
-    } finally {
-      setIsMarkingSold(false)
     }
   }
 
@@ -353,21 +341,27 @@ function Profile() {
         transition={{ duration: 0.35, delay: 0.05 }}
         className="mt-8 rounded-3xl border border-border bg-white p-6 shadow-card sm:p-8"
       >
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={[
-                'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors',
-                activeTab === tab.key ? 'bg-primary/10 text-primary' : 'text-ink-soft hover:bg-slate-100 hover:text-ink',
-              ].join(' ')}
-            >
-              <tab.icon className="h-4 w-4" aria-hidden="true" />
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={[
+                  'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                  activeTab === tab.key ? 'bg-primary/10 text-primary' : 'text-ink-soft hover:bg-slate-100 hover:text-ink',
+                ].join(' ')}
+              >
+                <tab.icon className="h-4 w-4" aria-hidden="true" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <Button to={ROUTES.SELL} size="sm">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New Listing
+          </Button>
         </div>
 
         <div className="mt-6">
@@ -388,16 +382,14 @@ function Profile() {
               {activeProducts.map((product) => (
                 <div key={product.id} className="flex flex-col gap-2">
                   <ProductCard product={product} />
-                  {activeTab === 'mine' && product.status === 'available' && (
-                    <Button variant="outline" size="sm" onClick={() => openSoldModal(product)}>
-                      <Tag className="h-3.5 w-3.5" aria-hidden="true" />
-                      Mark as Sold
-                    </Button>
-                  )}
-                  {product.status === 'sold' && (
-                    <p className="text-center text-xs text-ink-soft">
-                      Sold{product.buyerName ? ` to ${product.buyerName}` : ''}
-                    </p>
+                  {activeTab === 'mine' ? (
+                    <ListingActions product={product} onUpdated={handleListingUpdated} onDeleted={handleListingDeleted} />
+                  ) : (
+                    product.status === 'sold' && (
+                      <p className="text-center text-xs text-ink-soft">
+                        Sold{product.buyerName ? ` to ${product.buyerName}` : ''}
+                      </p>
+                    )
                   )}
                 </div>
               ))}
@@ -512,24 +504,6 @@ function Profile() {
           </div>
           <Button type="submit" size="lg" fullWidth loading={isSavingProfile} className="mt-2">
             Save Changes
-          </Button>
-        </form>
-      </Modal>
-
-      <Modal isOpen={soldModalProduct !== null} onClose={() => setSoldModalProduct(null)} title="Mark as Sold" size="sm">
-        <form onSubmit={handleConfirmSold} className="flex flex-col gap-4">
-          <p className="text-sm text-ink-soft">
-            Mark <span className="font-semibold text-ink">{soldModalProduct?.name}</span> as sold. Optionally record
-            who bought it.
-          </p>
-          <Input
-            label="Buyer username or email (optional)"
-            value={buyerIdentifier}
-            onChange={(event) => setBuyerIdentifier(event.target.value)}
-            placeholder="e.g. nusrat.jahan"
-          />
-          <Button type="submit" size="lg" fullWidth loading={isMarkingSold}>
-            Confirm Sold
           </Button>
         </form>
       </Modal>

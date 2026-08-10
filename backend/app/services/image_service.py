@@ -20,3 +20,12 @@ def upload_avatar(file_bytes: bytes, user_id: int) -> str:
         transformation=[{"width": 512, "height": 512, "crop": "fill", "gravity": "face"}],
     )
     return result["secure_url"]
+
+
+def upload_product_image(file_bytes: bytes, product_id: int) -> str:
+    result = cloudinary.uploader.upload(
+        file_bytes,
+        folder=f"campus-exchange/products/{product_id}",
+        transformation=[{"width": 1200, "height": 1200, "crop": "limit"}],
+    )
+    return result["secure_url"]

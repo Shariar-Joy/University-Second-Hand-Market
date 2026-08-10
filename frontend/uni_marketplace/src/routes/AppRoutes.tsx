@@ -7,6 +7,7 @@ import About from '../pages/About'
 import Contact from '../pages/Contact'
 import Cart from '../pages/Cart'
 import Profile from '../pages/Profile'
+import CreateListing from '../pages/CreateListing'
 import ProductDetails from '../pages/ProductDetails'
 import TutorDetails from '../pages/TutorDetails'
 import RequireAuth from './RequireAuth'
@@ -75,6 +76,26 @@ function AppRoutes() {
             <RequireAuth>
               <PageTransition>
                 <Profile />
+              </PageTransition>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.SELL}
+          element={
+            <RequireAuth>
+              <PageTransition>
+                <CreateListing />
+              </PageTransition>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.EDIT_LISTING}
+          element={
+            <RequireAuth>
+              <PageTransition>
+                <CreateListing />
               </PageTransition>
             </RequireAuth>
           }
