@@ -1,10 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.products import MarkSoldRequest, ProductOut
+from app.schemas.products import (
+    MarkSoldRequest,
+    ProductCreateRequest,
+    ProductOut,
+    ProductStatusRequest,
+    ProductUpdateRequest,
+    RemoveImageRequest,
+)
 from app.services import product_service
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -30,6 +37,64 @@ def get_purchased_products(current_user: User = Depends(get_current_user), db: S
     return product_service.list_purchased(db, current_user)
 
 
+@router.post("", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
+def create_product(
+    payload: ProductCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return product_service.create_product(db, current_user, payload)
+
+
+@router.patch("/{product_id}", response_model=ProductOut)
+def update_product(
+    product_id: int,
+    payload: ProductUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return product_service.update_product(db, product_id, current_user, payload)
+
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(
+    product_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    product_service.delete_product(db, product_id, current_user)
+
+
+@router.patch("/{product_id}/status", response_model=ProductOut)
+def set_product_status(
+    product_id: int,
+    payload: ProductStatusRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return product_service.set_status(db, product_id, current_user, payload.status)
+
+
+@router.post("/{product_id}/images", response_model=ProductOut)
+def upload_product_images(
+    product_id: int,
+    files: list[UploadFile] = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return product_service.add_images(db, product_id, current_user, files)
+
+
+@router.delete("/{product_id}/images", response_model=ProductOut)
+def delete_product_image(
+    product_id: int,
+    payload: RemoveImageRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return product_service.remove_image(db, product_id, current_user, payload.image_url)
+
+
 @router.post("/{product_id}/sold", response_model=ProductOut)
 def mark_product_sold(
     product_id: int,
@@ -38,3 +103,8 @@ def mark_product_sold(
     db: Session = Depends(get_db),
 ):
     return product_service.mark_as_sold(db, product_id, current_user, payload)
+
+
+@router.get("/{slug}", response_model=ProductOut)
+def get_product_by_slug(slug: str, db: Session = Depends(get_db)):
+    return product_service.get_by_slug(db, slug)

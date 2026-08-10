@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Menu, ShoppingBag, ShoppingCart } from 'lucide-react'
+import { Bell, Menu, Plus, ShoppingBag, ShoppingCart } from 'lucide-react'
 import Avatar from '../../common/Avatar'
 import Button from '../../common/Button'
 import Drawer from '../../ui/Drawer'
@@ -54,6 +54,13 @@ function Navbar() {
         </nav>
 
         <div className="flex items-center gap-1.5">
+          {user && (
+            <Button to={ROUTES.SELL} size="sm" className="hidden sm:flex">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Sell
+            </Button>
+          )}
+
           <button
             type="button"
             onClick={() => showToast('No new notifications yet.', 'info')}
@@ -131,7 +138,11 @@ function Navbar() {
         </nav>
 
         {user ? (
-          <div className="mt-6 border-t border-border pt-5">
+          <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5">
+            <Button to={ROUTES.SELL} fullWidth>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Sell an Item
+            </Button>
             <Link to={ROUTES.PROFILE} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-slate-50">
               <Avatar name={user.fullName} src={user.profileImage} size="md" />
               <div>

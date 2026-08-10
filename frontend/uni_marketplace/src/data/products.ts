@@ -30,6 +30,21 @@ export type ProductCategory =
   | 'Instruments'
   | 'Other'
 
+// Mirrors backend/app/schemas/products.py's ALLOWED_CATEGORIES/ALLOWED_CONDITIONS -- keep in sync.
+export const PRODUCT_CATEGORIES: ProductCategory[] = [
+  'Books',
+  'Electronics',
+  'Furniture',
+  'Clothing',
+  'Bicycles',
+  'Sports',
+  'Stationery',
+  'Instruments',
+  'Other',
+]
+
+export const PRODUCT_CONDITIONS: ProductCondition[] = ['New', 'Like New', 'Good', 'Fair']
+
 const categoryImages: Record<ProductCategory, string> = {
   Books: booksImg,
   Electronics: electronicsImg,
@@ -59,6 +74,6 @@ export function getCategoryImage(category: string): string {
   return categoryImages[category as ProductCategory] ?? otherImg
 }
 
-export function getProductImage(product: { slug: string; category: string }): string {
-  return productImages[product.slug] ?? getCategoryImage(product.category)
+export function getProductImage(product: { slug: string; category: string; images?: string[] | null }): string {
+  return product.images?.[0] ?? productImages[product.slug] ?? getCategoryImage(product.category)
 }

@@ -19,6 +19,12 @@ const CONDITION_VARIANT: Record<ProductCondition, 'success' | 'primary' | 'neutr
   Fair: 'warning',
 }
 
+const STATUS_BADGE: Record<string, { label: string; variant: 'warning' | 'danger' | 'neutral' } | undefined> = {
+  reserved: { label: 'Reserved', variant: 'warning' },
+  sold: { label: 'Sold', variant: 'danger' },
+  archived: { label: 'Archived', variant: 'neutral' },
+}
+
 interface ProductCardProps {
   product: Product
 }
@@ -35,6 +41,8 @@ function ProductCard({ product }: ProductCardProps) {
 
   const conditionVariant = CONDITION_VARIANT[product.condition as ProductCondition] ?? 'neutral'
   const detailsPath = productDetailsPath(product.slug)
+  const statusBadge = STATUS_BADGE[product.status]
+  const isAvailable = product.status === 'available'
 
   return (
     <>
@@ -57,6 +65,11 @@ function ProductCard({ product }: ProductCardProps) {
             <Badge variant="neutral">{product.category}</Badge>
             <Badge variant={conditionVariant}>{product.condition}</Badge>
           </div>
+          {statusBadge && (
+            <div className="absolute top-3 right-3">
+              <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+            </div>
+          )}
           <button
             type="button"
             onClick={(event) => {
@@ -82,7 +95,7 @@ function ProductCard({ product }: ProductCardProps) {
           </p>
           <div className="mt-auto flex items-center justify-between pt-2">
             <span className="text-lg font-bold text-ink">{formatBDT(product.price)}</span>
-            <Button size="sm" onClick={handleAddToCart}>
+            <Button size="sm" onClick={handleAddToCart} disabled={!isAvailable}>
               <ShoppingCart className="h-4 w-4" aria-hidden="true" />
               Add
             </Button>
@@ -101,6 +114,7 @@ function ProductCard({ product }: ProductCardProps) {
             <div className="flex flex-wrap gap-1.5">
               <Badge variant="neutral">{product.category}</Badge>
               <Badge variant={conditionVariant}>{product.condition}</Badge>
+              {statusBadge && <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>}
             </div>
             <h3 className="text-lg font-bold text-ink">{product.name}</h3>
             <p className="flex items-center gap-1 text-sm text-ink-soft">
@@ -111,6 +125,7 @@ function ProductCard({ product }: ProductCardProps) {
             <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row">
               <Button
                 fullWidth
+                disabled={!isAvailable}
                 onClick={() => {
                   handleAddToCart()
                   setQuickViewOpen(false)
