@@ -7,7 +7,7 @@ import Badge from '../../ui/Badge'
 import Modal from '../../ui/Modal'
 import { useCart } from '../../../context/CartContext'
 import { useToast } from '../../../context/ToastContext'
-import { getProductImage, type ProductCondition } from '../../../data/products'
+import { getProductImage, handleImageFallback, type ProductCondition } from '../../../data/products'
 import type { Product } from '../../../services/productService'
 import { formatBDT } from '../../../utils/currency'
 import { productDetailsPath } from '../../../routes/routePaths'
@@ -58,6 +58,7 @@ function ProductCard({ product }: ProductCardProps) {
           <img
             src={getProductImage(product)}
             alt={product.name}
+            onError={(event) => handleImageFallback(event, product.category)}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-x-0 top-0 h-16 bg-linear-to-b from-black/35 to-transparent" aria-hidden="true" />
@@ -108,6 +109,7 @@ function ProductCard({ product }: ProductCardProps) {
           <img
             src={getProductImage(product)}
             alt={product.name}
+            onError={(event) => handleImageFallback(event, product.category)}
             className="h-48 w-full rounded-xl object-cover sm:h-40 sm:w-40"
           />
           <div className="flex flex-1 flex-col gap-2">

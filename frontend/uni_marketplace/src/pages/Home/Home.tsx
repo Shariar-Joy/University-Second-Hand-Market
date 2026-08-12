@@ -194,9 +194,12 @@ function Home() {
     setPage(1)
   }, [debouncedQuery, debouncedFilters])
 
-  // Guards against a slower earlier request resolving after a faster later one and overwriting
-  // its results -- only the response for the most recently issued request gets applied.
+  // Guards against a stale (older) response overwriting a newer one that already applied its
+  // results -- tracks the last *applied* request rather than the last *issued* one, so two
+  // requests firing close together (e.g. React StrictMode's double-invoked effects in dev) don't
+  // leave the UI stuck waiting on whichever one happens to finish last.
   const listingRequestIdRef = useRef(0)
+  const lastAppliedListingRequestIdRef = useRef(0)
 
   const runProductListing = useCallback((term: string, filterValues: ProductFilterValues) => {
     const requestId = ++listingRequestIdRef.current
@@ -213,15 +216,18 @@ function Home() {
         sort: filterValues.sort || undefined,
       })
       .then((results) => {
-        if (isMountedRef.current && requestId === listingRequestIdRef.current) setListingResults(results)
+        if (!isMountedRef.current || requestId < lastAppliedListingRequestIdRef.current) return
+        lastAppliedListingRequestIdRef.current = requestId
+        setListingResults(results)
       })
       .catch(() => {
-        if (!isMountedRef.current || requestId !== listingRequestIdRef.current) return
+        if (!isMountedRef.current || requestId < lastAppliedListingRequestIdRef.current) return
+        lastAppliedListingRequestIdRef.current = requestId
         setListingResults([])
         setListingError('Could not load products right now. Please try again.')
       })
       .finally(() => {
-        if (isMountedRef.current && requestId === listingRequestIdRef.current) setIsListingLoading(false)
+        if (isMountedRef.current) setIsListingLoading(false)
       })
   }, [])
 

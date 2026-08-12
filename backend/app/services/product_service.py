@@ -127,6 +127,10 @@ def delete_product(db: Session, product_id: int, current_user: User) -> None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Sold listings can't be deleted — archive it instead."
         )
+    # The product_images rows cascade-delete with the product, but that's just our database --
+    # the actual files on Cloudinary need an explicit destroy or they're orphaned forever.
+    for image in product_image_crud.list_by_product(db, product.id):
+        image_service.delete_product_image(image.public_id)
     product_crud.delete(db, product)
 
 
