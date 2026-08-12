@@ -2,6 +2,13 @@ import { apiClient } from './apiClient'
 
 export type ProductStatus = 'available' | 'sold' | 'reserved' | 'archived'
 
+export interface ProductImage {
+  id: number
+  url: string
+  position: number
+  isPrimary: boolean
+}
+
 export interface Product {
   id: number
   slug: string
@@ -14,6 +21,7 @@ export interface Product {
   university: string
   description?: string | null
   images: string[]
+  imageDetails: ProductImage[]
   negotiable: boolean
   location?: string | null
   department?: string | null
@@ -21,6 +29,13 @@ export interface Product {
   buyerName?: string | null
   createdAt: string
   updatedAt: string
+}
+
+interface ProductImageResponse {
+  id: number
+  url: string
+  position: number
+  is_primary: boolean
 }
 
 interface ProductResponse {
@@ -35,6 +50,7 @@ interface ProductResponse {
   university: string
   description: string | null
   images: string[]
+  image_details: ProductImageResponse[]
   negotiable: boolean
   location: string | null
   department: string | null
@@ -57,6 +73,12 @@ function toProduct(response: ProductResponse): Product {
     university: response.university,
     description: response.description,
     images: response.images,
+    imageDetails: response.image_details.map((image) => ({
+      id: image.id,
+      url: image.url,
+      position: image.position,
+      isPrimary: image.is_primary,
+    })),
     negotiable: response.negotiable,
     location: response.location,
     department: response.department,
@@ -142,8 +164,18 @@ export async function uploadProductImages(id: number, files: File[]): Promise<Pr
   return toProduct(response)
 }
 
-export async function removeProductImage(id: number, imageUrl: string): Promise<Product> {
-  const response = await apiClient.del<ProductResponse>(`/products/${id}/images`, { image_url: imageUrl })
+export async function removeProductImage(id: number, imageId: number): Promise<Product> {
+  const response = await apiClient.del<ProductResponse>(`/products/${id}/images/${imageId}`)
+  return toProduct(response)
+}
+
+export async function setPrimaryImage(id: number, imageId: number): Promise<Product> {
+  const response = await apiClient.patch<ProductResponse>(`/products/${id}/images/${imageId}/primary`)
+  return toProduct(response)
+}
+
+export async function reorderProductImages(id: number, imageIds: number[]): Promise<Product> {
+  const response = await apiClient.patch<ProductResponse>(`/products/${id}/images/reorder`, { image_ids: imageIds })
   return toProduct(response)
 }
 

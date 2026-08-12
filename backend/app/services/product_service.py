@@ -4,6 +4,7 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.crud import product as product_crud
+from app.crud import product_image as product_image_crud
 from app.crud import user as user_crud
 from app.models.product import Product
 from app.models.user import User
@@ -56,7 +57,6 @@ def create_product(db: Session, current_user: User, payload: ProductCreateReques
     data["seller_id"] = current_user.id
     data["university"] = current_user.university
     data["status"] = "available"
-    data["images"] = []
     return product_crud.create(db, data)
 
 
@@ -90,14 +90,16 @@ def set_status(db: Session, product_id: int, current_user: User, new_status: str
 
 def add_images(db: Session, product_id: int, current_user: User, files: list[UploadFile]) -> Product:
     product = _get_owned_product(db, product_id, current_user)
-    current_images = product.images or []
-    if len(current_images) + len(files) > _MAX_IMAGES_PER_PRODUCT:
+    existing_images = product_image_crud.list_by_product(db, product.id)
+    if not files:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Choose at least one image to upload.")
+    if len(existing_images) + len(files) > _MAX_IMAGES_PER_PRODUCT:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"A listing can have at most {_MAX_IMAGES_PER_PRODUCT} images.",
         )
 
-    uploaded_urls = []
+    file_payloads: list[bytes] = []
     for file in files:
         if file.content_type not in _ALLOWED_IMAGE_TYPES:
             raise HTTPException(
@@ -107,20 +109,74 @@ def add_images(db: Session, product_id: int, current_user: User, files: list[Upl
         file_bytes = file.file.read()
         if len(file_bytes) > _MAX_IMAGE_BYTES:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Each image must be 5MB or smaller.")
-        uploaded_urls.append(image_service.upload_product_image(file_bytes, product.id))
+        file_payloads.append(file_bytes)
 
-    product.images = [*current_images, *uploaded_urls]
+    next_position = max((image.position for image in existing_images), default=-1) + 1
+    has_primary = any(image.is_primary for image in existing_images)
+    for offset, file_bytes in enumerate(file_payloads):
+        uploaded = image_service.upload_product_image(file_bytes, product.id)
+        product_image_crud.create(
+            db,
+            product_id=product.id,
+            url=uploaded["url"],
+            public_id=uploaded["public_id"],
+            position=next_position + offset,
+            is_primary=not has_primary and offset == 0,
+        )
+
     db.commit()
     db.refresh(product)
     return product
 
 
-def remove_image(db: Session, product_id: int, current_user: User, image_url: str) -> Product:
+def remove_image(db: Session, product_id: int, current_user: User, image_id: int) -> Product:
     product = _get_owned_product(db, product_id, current_user)
-    current_images = product.images or []
-    if image_url not in current_images:
+    image = product_image_crud.get_by_id(db, image_id)
+    if image is None or image.product_id != product.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That image isn't part of this listing.")
-    product.images = [url for url in current_images if url != image_url]
+
+    was_primary = image.is_primary
+    image_service.delete_product_image(image.public_id)
+    product_image_crud.delete(db, image)
+    db.flush()
+
+    if was_primary:
+        remaining = product_image_crud.list_by_product(db, product.id)
+        if remaining:
+            remaining[0].is_primary = True
+
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+def set_primary_image(db: Session, product_id: int, current_user: User, image_id: int) -> Product:
+    product = _get_owned_product(db, product_id, current_user)
+    image = product_image_crud.get_by_id(db, image_id)
+    if image is None or image.product_id != product.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That image isn't part of this listing.")
+
+    for other in product_image_crud.list_by_product(db, product.id):
+        other.is_primary = other.id == image.id
+
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+def reorder_images(db: Session, product_id: int, current_user: User, image_ids: list[int]) -> Product:
+    product = _get_owned_product(db, product_id, current_user)
+    current_images = product_image_crud.list_by_product(db, product.id)
+    if sorted(image_ids) != sorted(image.id for image in current_images):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The image order must include every image on this listing exactly once.",
+        )
+
+    images_by_id = {image.id: image for image in current_images}
+    for position, image_id in enumerate(image_ids):
+        images_by_id[image_id].position = position
+
     db.commit()
     db.refresh(product)
     return product
