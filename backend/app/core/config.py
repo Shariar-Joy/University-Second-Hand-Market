@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     COOKIE_NAME: str = "access_token"
     # Cookies over plain http only work with secure=False; flip this on once served over https.
     COOKIE_SECURE: bool = False
+    # "lax" works for same-site local dev (localhost:5173 -> localhost:8000). Cross-site deploys
+    # (Vercel frontend, Render backend) need "none" -- browsers refuse to attach a Lax cookie to
+    # cross-site fetch/XHR requests at all, so every POST/PATCH/DELETE call fails auth even though
+    # the cookie was set correctly at login. "none" requires COOKIE_SECURE=true (browsers reject
+    # SameSite=None without Secure).
+    COOKIE_SAMESITE: str = "lax"
 
     # Avatar image storage (Cloudinary). Empty by default so importing config without these set
     # doesn't crash local dev -- the upload call itself fails loudly if left unconfigured.

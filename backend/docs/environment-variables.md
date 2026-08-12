@@ -12,6 +12,7 @@ locally and the real process environment in production (Render). Copy `backend/.
 | `REMEMBER_ME_EXPIRE_MINUTES` | No (default `43200`) | `43200` | Auth cookie lifetime when `remember_me: true` is passed at login (30 days default). |
 | `CORS_ORIGINS` | Yes | `http://localhost:5173,https://campus-exchange.vercel.app` | Comma-separated list of frontend origins allowed to call this API with credentials. |
 | `COOKIE_SECURE` | No (default `false`) | `true` | Set to `true` in production (HTTPS) so the auth cookie only travels over TLS. Must be `false` for plain-`http://localhost` development. |
+| `COOKIE_SAMESITE` | No (default `lax`) | `none` | Set to `none` in production, since the Vercel frontend and Render backend are different domains -- `lax` cookies are never attached to cross-site fetch/XHR requests, so every authenticated request fails with "Not authenticated" even right after login. Requires `COOKIE_SECURE=true`. Leave at `lax` for same-site local dev. |
 
 Not configurable via env (fixed in code, `app/core/config.py`): `APP_NAME`, `API_V1_PREFIX`
 (`/api/v1`), `JWT_ALGORITHM` (`HS256`), `COOKIE_NAME` (`access_token`).

@@ -40,4 +40,6 @@ def delete_me(
     db: Session = Depends(get_db),
 ):
     user_service.delete_account(db, current_user, payload)
-    response.delete_cookie(key=settings.COOKIE_NAME, path="/")
+    response.delete_cookie(
+        key=settings.COOKIE_NAME, path="/", secure=settings.COOKIE_SECURE, samesite=settings.COOKIE_SAMESITE
+    )
