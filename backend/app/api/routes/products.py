@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -18,8 +18,8 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 @router.get("", response_model=list[ProductOut])
-def get_products(db: Session = Depends(get_db)):
-    return product_service.list_all(db)
+def get_products(search: str | None = Query(default=None), db: Session = Depends(get_db)):
+    return product_service.list_all(db, search=search)
 
 
 @router.get("/mine", response_model=list[ProductOut])

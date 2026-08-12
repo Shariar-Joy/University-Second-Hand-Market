@@ -18,8 +18,17 @@ _MAX_IMAGES_PER_PRODUCT = 5
 _PUBLICLY_VISIBLE_STATUSES = ["available", "reserved"]
 
 
-def list_all(db: Session) -> list[Product]:
-    return product_crud.list_all(db, statuses=_PUBLICLY_VISIBLE_STATUSES)
+def _normalize_search(search: str | None) -> str | None:
+    if not search:
+        return None
+    # Collapses runs of internal whitespace and strips the ends, so "  data   structures "
+    # matches the same rows as "data structures".
+    normalized = " ".join(search.split())
+    return normalized or None
+
+
+def list_all(db: Session, search: str | None = None) -> list[Product]:
+    return product_crud.list_all(db, statuses=_PUBLICLY_VISIBLE_STATUSES, search=_normalize_search(search))
 
 
 def get_by_slug(db: Session, slug: str) -> Product:
