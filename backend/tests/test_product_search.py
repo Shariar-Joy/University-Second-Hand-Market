@@ -146,7 +146,7 @@ def test_search_failure_returns_meaningful_error(client: TestClient, monkeypatch
     register_user(client)
     create_product_with(client, name="Introduction to Algorithms", category="Books")
 
-    def failing_list_all(db, statuses=None, search=None):
+    def failing_list_all(db, **kwargs):
         raise RuntimeError("Database is unreachable")
 
     monkeypatch.setattr("app.crud.product.list_all", failing_list_all)

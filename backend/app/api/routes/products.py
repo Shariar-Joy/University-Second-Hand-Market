@@ -18,8 +18,26 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 @router.get("", response_model=list[ProductOut])
-def get_products(search: str | None = Query(default=None), db: Session = Depends(get_db)):
-    return product_service.list_all(db, search=search)
+def get_products(
+    search: str | None = Query(default=None),
+    category: str | None = Query(default=None),
+    condition: str | None = Query(default=None),
+    min_price: int | None = Query(default=None, ge=0),
+    max_price: int | None = Query(default=None, ge=0),
+    availability: str | None = Query(default=None),
+    sort: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    return product_service.list_all(
+        db,
+        search=search,
+        category=category,
+        condition=condition,
+        min_price=min_price,
+        max_price=max_price,
+        availability=availability,
+        sort=sort,
+    )
 
 
 @router.get("/mine", response_model=list[ProductOut])

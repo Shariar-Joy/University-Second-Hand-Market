@@ -16,6 +16,7 @@ import {
   Send,
   Shirt,
   ShoppingBag,
+  SlidersHorizontal,
   Sofa,
   Trophy,
   Users,
@@ -23,11 +24,14 @@ import {
 import SearchBar from '../../components/common/SearchBar'
 import Button from '../../components/common/Button'
 import ProductCard from '../../components/product/ProductCard'
+import ProductFilters, { EMPTY_PRODUCT_FILTERS, hasActiveProductFilters } from '../../components/product/ProductFilters'
+import type { ProductFilterValues } from '../../components/product/ProductFilters'
 import TutorCard from '../../components/tutor/TutorCard'
 import SectionTitle from '../../components/ui/SectionTitle'
 import StatsCard from '../../components/ui/StatsCard'
 import EmptyState from '../../components/ui/EmptyState'
 import Pagination from '../../components/ui/Pagination'
+import Drawer from '../../components/ui/Drawer'
 import { ProductCardSkeleton, TutorCardSkeleton } from '../../components/ui/LoadingSkeleton'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
@@ -124,19 +128,24 @@ function Home() {
   const { showToast } = useToast()
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [filters, setFilters] = useState<ProductFilterValues>(EMPTY_PRODUCT_FILTERS)
+  const [debouncedFilters, setDebouncedFilters] = useState<ProductFilterValues>(EMPTY_PRODUCT_FILTERS)
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [newsletterEmail, setNewsletterEmail] = useState('')
 
+  // Unfiltered products, fetched once -- used only for the site-wide stats below, so a search or
+  // filter never changes the "X+ Active Listings" counts.
   const [products, setProducts] = useState<Product[]>([])
   const [tutors, setTutors] = useState<Tutor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
-  // Backend-driven product search, kept separate from the initial load's state above so a
-  // search in progress/failing never clobbers the full listing or the site-wide stats.
-  const [searchResults, setSearchResults] = useState<Product[] | null>(null)
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchError, setSearchError] = useState('')
+  // The actual "Products for sale" grid: always backend-driven by search + filters + sort
+  // together, kept separate from the state above so it has its own loading/error lifecycle.
+  const [listingResults, setListingResults] = useState<Product[]>([])
+  const [isListingLoading, setIsListingLoading] = useState(true)
+  const [listingError, setListingError] = useState('')
   const isMountedRef = useRef(true)
 
   const productsRef = useRef<HTMLElement>(null)
@@ -170,45 +179,63 @@ function Home() {
 
   const normalizedQuery = query.trim().toLowerCase()
 
+  // Debounce so fast typing (search text or the min/max price fields) doesn't fire a backend
+  // request per keystroke. Category/condition/availability/sort ride the same debounced state --
+  // one request per settled change instead of a separate mechanism per control.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedQuery(query.trim())
+      setDebouncedFilters(filters)
+    }, 350)
+    return () => clearTimeout(handle)
+  }, [query, filters])
+
   useEffect(() => {
     setPage(1)
-  }, [normalizedQuery])
+  }, [debouncedQuery, debouncedFilters])
 
-  // Debounce so fast typing doesn't fire a backend request per keystroke.
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedQuery(query.trim()), 350)
-    return () => clearTimeout(handle)
-  }, [query])
+  // Guards against a slower earlier request resolving after a faster later one and overwriting
+  // its results -- only the response for the most recently issued request gets applied.
+  const listingRequestIdRef = useRef(0)
 
-  const runProductSearch = useCallback((term: string) => {
-    setIsSearching(true)
-    setSearchError('')
+  const runProductListing = useCallback((term: string, filterValues: ProductFilterValues) => {
+    const requestId = ++listingRequestIdRef.current
+    setIsListingLoading(true)
+    setListingError('')
     productService
-      .listProducts(term)
+      .listProducts({
+        search: term || undefined,
+        category: filterValues.category || undefined,
+        condition: filterValues.condition || undefined,
+        minPrice: filterValues.minPrice ? Number(filterValues.minPrice) : undefined,
+        maxPrice: filterValues.maxPrice ? Number(filterValues.maxPrice) : undefined,
+        availability: filterValues.availability || undefined,
+        sort: filterValues.sort || undefined,
+      })
       .then((results) => {
-        if (isMountedRef.current) setSearchResults(results)
+        if (isMountedRef.current && requestId === listingRequestIdRef.current) setListingResults(results)
       })
       .catch(() => {
-        if (!isMountedRef.current) return
-        setSearchResults([])
-        setSearchError('Could not search products right now. Please try again.')
+        if (!isMountedRef.current || requestId !== listingRequestIdRef.current) return
+        setListingResults([])
+        setListingError('Could not load products right now. Please try again.')
       })
       .finally(() => {
-        if (isMountedRef.current) setIsSearching(false)
+        if (isMountedRef.current && requestId === listingRequestIdRef.current) setIsListingLoading(false)
       })
   }, [])
 
   useEffect(() => {
-    if (!debouncedQuery) {
-      setSearchResults(null)
-      setSearchError('')
-      return
-    }
-    runProductSearch(debouncedQuery)
-  }, [debouncedQuery, runProductSearch])
+    runProductListing(debouncedQuery, debouncedFilters)
+  }, [debouncedQuery, debouncedFilters, runProductListing])
 
-  const isProductSearchActive = debouncedQuery.length > 0
-  const displayedProducts = isProductSearchActive ? searchResults ?? [] : products
+  const isFiltering = debouncedQuery.length > 0 || hasActiveProductFilters(debouncedFilters)
+  const displayedProducts = listingResults
+
+  function clearSearchAndFilters() {
+    setQuery('')
+    setFilters(EMPTY_PRODUCT_FILTERS)
+  }
 
   const filteredTutors = useMemo(() => {
     if (!normalizedQuery) return tutors
@@ -221,7 +248,6 @@ function Home() {
 
   const totalPages = Math.max(1, Math.ceil(displayedProducts.length / PRODUCTS_PER_PAGE))
   const paginatedProducts = displayedProducts.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE)
-  const isShowingProductSkeleton = isLoading || (isProductSearchActive && isSearching)
 
   const stats = useMemo(() => {
     const universityCount = new Set([...products.map((p) => p.university), ...tutors.map((t) => t.university)]).size
@@ -360,7 +386,7 @@ function Home() {
           title="Products for sale"
           subtitle="Fresh listings from students across campus."
           action={
-            !isShowingProductSkeleton && (
+            !isListingLoading && (
               <span className="text-sm font-medium text-ink-soft">
                 {displayedProducts.length} listing{displayedProducts.length === 1 ? '' : 's'}
               </span>
@@ -368,58 +394,95 @@ function Home() {
           }
         />
 
-        {loadError ? (
-          <EmptyState icon={ShoppingBag} title="Something went wrong" description={loadError} className="mt-8" />
-        ) : isShowingProductSkeleton ? (
-          <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 8 }, (_, index) => (
-              <ProductCardSkeleton key={index} />
-            ))}
+        <div className="mt-8 flex items-start gap-8">
+          <aside className="hidden w-64 shrink-0 rounded-2xl border border-border bg-white p-5 shadow-card lg:block">
+            <ProductFilters values={filters} onChange={setFilters} onClear={() => setFilters(EMPTY_PRODUCT_FILTERS)} />
+          </aside>
+
+          <div className="min-w-0 flex-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className="mb-5 lg:hidden"
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              Filters
+              {hasActiveProductFilters(filters) && (
+                <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-white">
+                  {Object.values(filters).filter((value) => value !== '').length}
+                </span>
+              )}
+            </Button>
+
+            {listingError ? (
+              <EmptyState
+                icon={ShoppingBag}
+                title="Something went wrong"
+                description={listingError}
+                action={
+                  <Button variant="outline" onClick={() => runProductListing(debouncedQuery, debouncedFilters)}>
+                    Try Again
+                  </Button>
+                }
+              />
+            ) : isListingLoading ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <ProductCardSkeleton key={index} />
+                ))}
+              </div>
+            ) : paginatedProducts.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {paginatedProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                <div className="mt-10">
+                  <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                </div>
+              </>
+            ) : isFiltering ? (
+              <EmptyState
+                icon={ShoppingBag}
+                title="No products match your search or filters"
+                description="Try a different keyword, or adjust your filters."
+                action={
+                  <Button variant="outline" onClick={clearSearchAndFilters}>
+                    Clear Search &amp; Filters
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={ShoppingBag}
+                title="No listings yet"
+                description="Check back soon — new listings show up here as students post them."
+              />
+            )}
           </div>
-        ) : isProductSearchActive && searchError ? (
-          <EmptyState
-            icon={ShoppingBag}
-            title="Something went wrong"
-            description={searchError}
-            className="mt-8"
-            action={
-              <Button variant="outline" onClick={() => runProductSearch(debouncedQuery)}>
-                Try Again
-              </Button>
-            }
-          />
-        ) : paginatedProducts.length > 0 ? (
-          <>
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {paginatedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-            <div className="mt-10">
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-            </div>
-          </>
-        ) : isProductSearchActive ? (
-          <EmptyState
-            icon={ShoppingBag}
-            title="No products match your search"
-            description="Try a different keyword or browse all categories."
-            className="mt-8"
-            action={
-              <Button variant="outline" onClick={() => setQuery('')}>
-                Clear Search
-              </Button>
-            }
-          />
-        ) : (
-          <EmptyState
-            icon={ShoppingBag}
-            title="No listings yet"
-            description="Check back soon — new listings show up here as students post them."
-            className="mt-8"
-          />
-        )}
+        </div>
       </section>
+
+      <Drawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} title="Filters">
+        <ProductFilters
+          values={filters}
+          onChange={setFilters}
+          onClear={() => setFilters(EMPTY_PRODUCT_FILTERS)}
+          hideHeading
+        />
+        <div className="mt-6 flex gap-2">
+          {hasActiveProductFilters(filters) && (
+            <Button variant="outline" onClick={() => setFilters(EMPTY_PRODUCT_FILTERS)}>
+              Clear
+            </Button>
+          )}
+          <Button className="flex-1" onClick={() => setIsFilterDrawerOpen(false)}>
+            Show Results
+          </Button>
+        </div>
+      </Drawer>
 
       <section className="bg-slate-50 py-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">

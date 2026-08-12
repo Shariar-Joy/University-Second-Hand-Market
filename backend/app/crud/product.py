@@ -6,8 +6,27 @@ from sqlalchemy.orm import Session
 from app.models.product import Product
 
 
-def list_all(db: Session, statuses: list[str] | None = None, search: str | None = None) -> list[Product]:
-    query = select(Product).order_by(Product.id)
+_SORT_CLAUSES = {
+    # created_at alone can tie when rows are inserted within the same second (SQLite's
+    # CURRENT_TIMESTAMP only has second resolution), so id breaks the tie deterministically.
+    "newest": (Product.created_at.desc(), Product.id.desc()),
+    "oldest": (Product.created_at.asc(), Product.id.asc()),
+    "price_asc": (Product.price.asc(), Product.id.asc()),
+    "price_desc": (Product.price.desc(), Product.id.asc()),
+}
+
+
+def list_all(
+    db: Session,
+    statuses: list[str] | None = None,
+    search: str | None = None,
+    category: str | None = None,
+    condition: str | None = None,
+    min_price: int | None = None,
+    max_price: int | None = None,
+    sort: str | None = None,
+) -> list[Product]:
+    query = select(Product)
     if statuses is not None:
         query = query.where(Product.status.in_(statuses))
     if search:
@@ -21,6 +40,18 @@ def list_all(db: Session, statuses: list[str] | None = None, search: str | None 
                 Product.category.ilike(term),
             )
         )
+    if category is not None:
+        query = query.where(Product.category == category)
+    if condition is not None:
+        query = query.where(Product.condition == condition)
+    if min_price is not None:
+        query = query.where(Product.price >= min_price)
+    if max_price is not None:
+        query = query.where(Product.price <= max_price)
+
+    # `sort` is only ever a key from _SORT_CLAUSES (the caller validates it against that same
+    # allowlist) -- never raw client input -- so this can't become an order-by injection vector.
+    query = query.order_by(*_SORT_CLAUSES.get(sort, (Product.id.asc(),)))
     return list(db.execute(query).scalars())
 
 
