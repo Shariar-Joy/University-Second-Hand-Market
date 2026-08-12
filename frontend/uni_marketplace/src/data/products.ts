@@ -77,3 +77,16 @@ export function getCategoryImage(category: string): string {
 export function getProductImage(product: { slug: string; category: string; images?: string[] | null }): string {
   return product.images?.[0] ?? productImages[product.slug] ?? getCategoryImage(product.category)
 }
+
+/**
+ * Swaps a broken <img> (e.g. a Cloudinary asset that was deleted) to the category placeholder,
+ * instead of leaving the browser's default broken-image icon on screen.
+ */
+export function handleImageFallback(event: { currentTarget: HTMLImageElement }, category: string): void {
+  const img = event.currentTarget
+  // Guard with a flag (rather than comparing img.src, which the browser resolves to an absolute
+  // URL) so a fallback asset that itself fails to load can't retrigger this and loop forever.
+  if (img.dataset.fallbackApplied === 'true') return
+  img.dataset.fallbackApplied = 'true'
+  img.src = getCategoryImage(category)
+}

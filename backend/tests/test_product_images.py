@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.services.image_service import delete_product_image as real_delete_product_image
 from tests.conftest import create_product, register_user, tiny_png_bytes
 
 
@@ -226,3 +227,34 @@ def test_existing_product_crud_still_works(client: TestClient):
 
     get_response = client.get(f"/api/v1/products/{product['slug']}")
     assert get_response.status_code == 404
+
+
+def test_deleting_product_cleans_up_cloudinary_images(client: TestClient, monkeypatch):
+    register_user(client)
+    product = create_product(client)
+    images = upload_images(client, product["id"], count=3).json()["image_details"]
+    assert len(images) == 3
+
+    # Overrides the autouse fake_cloudinary fixture's no-op for just this test, so we can spy on
+    # exactly which public_ids delete_product asks image_service to clean up.
+    destroyed_public_ids = []
+    monkeypatch.setattr(
+        "app.services.image_service.delete_product_image",
+        lambda public_id: destroyed_public_ids.append(public_id),
+    )
+
+    delete_response = client.delete(f"/api/v1/products/{product['id']}")
+    assert delete_response.status_code == 204
+    assert len(destroyed_public_ids) == 3
+
+
+def test_delete_product_image_swallows_cloudinary_errors(monkeypatch):
+    # Unit-tests the real delete_product_image (captured at module import, before the autouse
+    # fake_cloudinary fixture replaces it) to confirm the existing safety net still holds: a
+    # Cloudinary API failure during cleanup must never raise out of this function.
+    def failing_destroy(public_id):
+        raise RuntimeError("Cloudinary is unreachable")
+
+    monkeypatch.setattr("app.services.image_service.cloudinary.uploader.destroy", failing_destroy)
+
+    real_delete_product_image("campus-exchange/products/1/some-public-id")

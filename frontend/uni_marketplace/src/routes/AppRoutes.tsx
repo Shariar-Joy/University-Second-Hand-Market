@@ -10,6 +10,7 @@ import Profile from '../pages/Profile'
 import CreateListing from '../pages/CreateListing'
 import ProductDetails from '../pages/ProductDetails'
 import TutorDetails from '../pages/TutorDetails'
+import NotFound from '../pages/NotFound'
 import RequireAuth from './RequireAuth'
 import PageTransition from '../components/layout/PageTransition'
 import { ROUTES } from './routePaths'
@@ -23,11 +24,9 @@ function AppRoutes() {
         <Route
           path={ROUTES.HOME}
           element={
-            <RequireAuth>
-              <PageTransition>
-                <Home />
-              </PageTransition>
-            </RequireAuth>
+            <PageTransition>
+              <Home />
+            </PageTransition>
           }
         />
         <Route
@@ -119,11 +118,9 @@ function AppRoutes() {
         <Route
           path="*"
           element={
-            <RequireAuth>
-              <PageTransition>
-                <Home />
-              </PageTransition>
-            </RequireAuth>
+            <PageTransition>
+              <NotFound />
+            </PageTransition>
           }
         />
       </Routes>

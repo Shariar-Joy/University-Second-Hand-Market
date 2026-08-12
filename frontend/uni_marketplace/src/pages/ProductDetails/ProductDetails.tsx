@@ -22,7 +22,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useToast } from '../../context/ToastContext'
 import { ApiError } from '../../services/apiClient'
-import { getProductImage, type ProductCondition } from '../../data/products'
+import { getProductImage, handleImageFallback, type ProductCondition } from '../../data/products'
 import * as productService from '../../services/productService'
 import type { Product } from '../../services/productService'
 import { formatBDT } from '../../utils/currency'
@@ -173,7 +173,12 @@ function ProductDetails() {
       >
         <div className="flex flex-col gap-3">
           <div className="relative overflow-hidden rounded-2xl border border-border bg-slate-100 shadow-card">
-            <img src={activeImage} alt={product.name} className="aspect-4/3 w-full object-cover" />
+            <img
+              src={activeImage}
+              alt={product.name}
+              onError={(event) => handleImageFallback(event, product.category)}
+              className="aspect-4/3 w-full object-cover"
+            />
             {hasMultipleImages && (
               <>
                 <button
@@ -211,7 +216,12 @@ function ProductDetails() {
                     index === activeImageIndex ? 'border-primary' : 'border-transparent hover:border-border',
                   ].join(' ')}
                 >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={url}
+                    alt=""
+                    onError={(event) => handleImageFallback(event, product.category)}
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ))}
             </div>

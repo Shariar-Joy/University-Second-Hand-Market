@@ -73,7 +73,7 @@ function Button(props: ButtonProps) {
     </>
   )
 
-  if ('to' in rest && rest.to !== undefined) {
+  if (rest.to !== undefined) {
     return (
       <Link className={classes} {...rest} to={rest.to}>
         {content}
@@ -81,10 +81,8 @@ function Button(props: ButtonProps) {
     )
   }
 
-  const buttonRest = rest as ButtonHTMLAttributes<HTMLButtonElement>
-
   return (
-    <button type="button" {...buttonRest} className={classes} disabled={loading || buttonRest.disabled}>
+    <button type="button" {...rest} className={classes} disabled={loading || rest.disabled}>
       {content}
     </button>
   )
