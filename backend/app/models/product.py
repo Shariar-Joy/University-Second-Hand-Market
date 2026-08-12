@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -25,7 +25,6 @@ class Product(Base):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    images: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="available")
     sold_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     department: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -43,7 +42,22 @@ class Product(Base):
     buyer_account: Mapped["User | None"] = relationship(  # noqa: F821
         foreign_keys=[buyer_id], back_populates="purchases"
     )
+    product_images: Mapped[list["ProductImage"]] = relationship(  # noqa: F821
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="(ProductImage.is_primary.desc(), ProductImage.position)",
+    )
 
     @property
     def buyer_name(self) -> str | None:
         return self.buyer_account.full_name if self.buyer_account else None
+
+    @property
+    def images(self) -> list[str]:
+        # Backward-compatible view used by ProductOut and the older frontend card/gallery code --
+        # primary image first, then the rest in display order.
+        return [image.url for image in self.product_images]
+
+    @property
+    def image_details(self) -> list["ProductImage"]:  # noqa: F821
+        return self.product_images

@@ -10,7 +10,7 @@ from app.schemas.products import (
     ProductOut,
     ProductStatusRequest,
     ProductUpdateRequest,
-    RemoveImageRequest,
+    ReorderImagesRequest,
 )
 from app.services import product_service
 
@@ -85,14 +85,34 @@ def upload_product_images(
     return product_service.add_images(db, product_id, current_user, files)
 
 
-@router.delete("/{product_id}/images", response_model=ProductOut)
+@router.delete("/{product_id}/images/{image_id}", response_model=ProductOut)
 def delete_product_image(
     product_id: int,
-    payload: RemoveImageRequest,
+    image_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return product_service.remove_image(db, product_id, current_user, payload.image_url)
+    return product_service.remove_image(db, product_id, current_user, image_id)
+
+
+@router.patch("/{product_id}/images/reorder", response_model=ProductOut)
+def reorder_product_images(
+    product_id: int,
+    payload: ReorderImagesRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return product_service.reorder_images(db, product_id, current_user, payload.image_ids)
+
+
+@router.patch("/{product_id}/images/{image_id}/primary", response_model=ProductOut)
+def set_primary_product_image(
+    product_id: int,
+    image_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return product_service.set_primary_image(db, product_id, current_user, image_id)
 
 
 @router.post("/{product_id}/sold", response_model=ProductOut)

@@ -1,13 +1,13 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useState, type ChangeEvent, type DragEvent, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ImagePlus, X } from 'lucide-react'
+import { ChevronLeft, GripVertical, ImagePlus, Loader2, Star, X } from 'lucide-react'
 import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
 import { useToast } from '../../context/ToastContext'
 import { ApiError } from '../../services/apiClient'
 import * as productService from '../../services/productService'
-import type { Product } from '../../services/productService'
+import type { Product, ProductImage } from '../../services/productService'
 import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS } from '../../data/products'
 import { ROUTES, productDetailsPath } from '../../routes/routePaths'
 
@@ -58,10 +58,13 @@ function CreateListing() {
   const [values, setValues] = useState<FormValues>(EMPTY_FORM)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [product, setProduct] = useState<Product | null>(null)
-  const [existingImages, setExistingImages] = useState<string[]>([])
+  const [existingImages, setExistingImages] = useState<ProductImage[]>([])
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(isEditMode)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [busyImageAction, setBusyImageAction] = useState<'removing' | 'primary' | 'reordering' | null>(null)
+  const [isDropzoneActive, setIsDropzoneActive] = useState(false)
+  const [draggedImageId, setDraggedImageId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!isEditMode || !id) return
@@ -87,7 +90,7 @@ function CreateListing() {
           location: match.location ?? '',
           department: match.department ?? '',
         })
-        setExistingImages(match.images)
+        setExistingImages([...match.imageDetails].sort((a, b) => a.position - b.position))
       })
       .catch((error) => showToast(errorMessage(error, 'Could not load this listing.'), 'error'))
       .finally(() => {
@@ -103,11 +106,8 @@ function CreateListing() {
     setValues((previous) => ({ ...previous, [field]: value }))
   }
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    event.target.value = ''
+  function addFiles(files: File[]) {
     if (files.length === 0) return
-
     if (existingImages.length + newFiles.length + files.length > MAX_IMAGES) {
       showToast(`A listing can have at most ${MAX_IMAGES} photos.`, 'error')
       return
@@ -125,18 +125,77 @@ function CreateListing() {
     setNewFiles((previous) => [...previous, ...files])
   }
 
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    addFiles(files)
+  }
+
+  function handleDropFiles(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault()
+    setIsDropzoneActive(false)
+    addFiles(Array.from(event.dataTransfer.files ?? []))
+  }
+
   function removeNewFile(index: number) {
     setNewFiles((previous) => previous.filter((_, fileIndex) => fileIndex !== index))
   }
 
-  async function removeExistingImage(url: string) {
+  async function removeExistingImage(imageId: number) {
     if (!product) return
+    setBusyImageAction('removing')
     try {
-      const updated = await productService.removeProductImage(product.id, url)
-      setExistingImages(updated.images)
+      const updated = await productService.removeProductImage(product.id, imageId)
+      setExistingImages([...updated.imageDetails].sort((a, b) => a.position - b.position))
       showToast('Photo removed.', 'success')
     } catch (error) {
       showToast(errorMessage(error, 'Could not remove that photo.'), 'error')
+    } finally {
+      setBusyImageAction(null)
+    }
+  }
+
+  async function makeImagePrimary(imageId: number) {
+    if (!product) return
+    setBusyImageAction('primary')
+    try {
+      const updated = await productService.setPrimaryImage(product.id, imageId)
+      setExistingImages([...updated.imageDetails].sort((a, b) => a.position - b.position))
+    } catch (error) {
+      showToast(errorMessage(error, 'Could not update the main photo.'), 'error')
+    } finally {
+      setBusyImageAction(null)
+    }
+  }
+
+  function handleImageDragStart(imageId: number) {
+    setDraggedImageId(imageId)
+  }
+
+  async function handleImageDropReorder(targetId: number) {
+    if (!product || draggedImageId === null || draggedImageId === targetId) {
+      setDraggedImageId(null)
+      return
+    }
+    const fromIndex = existingImages.findIndex((image) => image.id === draggedImageId)
+    const toIndex = existingImages.findIndex((image) => image.id === targetId)
+    setDraggedImageId(null)
+    if (fromIndex === -1 || toIndex === -1) return
+
+    const reordered = [...existingImages]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+    setExistingImages(reordered)
+
+    setBusyImageAction('reordering')
+    try {
+      const updated = await productService.reorderProductImages(product.id, reordered.map((image) => image.id))
+      setExistingImages([...updated.imageDetails].sort((a, b) => a.position - b.position))
+    } catch (error) {
+      showToast(errorMessage(error, 'Could not reorder photos.'), 'error')
+      setExistingImages([...existingImages])
+    } finally {
+      setBusyImageAction(null)
     }
   }
 
@@ -330,16 +389,47 @@ function CreateListing() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-ink">
+            <span className="flex items-center gap-2 text-sm font-medium text-ink">
               Photos <span className="text-danger">*</span>
+              {busyImageAction && <Loader2 className="h-3.5 w-3.5 animate-spin text-ink-soft" aria-hidden="true" />}
             </span>
             <div className="flex flex-wrap gap-3">
-              {existingImages.map((url) => (
-                <div key={url} className="relative h-20 w-20 overflow-hidden rounded-lg border border-border">
-                  <img src={url} alt="Listing" className="h-full w-full object-cover" />
+              {existingImages.map((image) => (
+                <div
+                  key={image.id}
+                  draggable={existingImages.length > 1}
+                  onDragStart={() => handleImageDragStart(image.id)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => handleImageDropReorder(image.id)}
+                  className={[
+                    'group relative h-20 w-20 overflow-hidden rounded-lg border',
+                    image.isPrimary ? 'border-primary ring-2 ring-primary/30' : 'border-border',
+                    existingImages.length > 1 ? 'cursor-grab' : '',
+                  ].join(' ')}
+                >
+                  <img src={image.url} alt="Listing" className="h-full w-full object-cover" />
+                  {existingImages.length > 1 && (
+                    <span className="absolute bottom-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <GripVertical className="h-3 w-3" />
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => removeExistingImage(url)}
+                    onClick={() => makeImagePrimary(image.id)}
+                    disabled={image.isPrimary || busyImageAction !== null}
+                    className={[
+                      'absolute top-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full text-white transition-colors',
+                      image.isPrimary ? 'bg-primary' : 'bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-primary',
+                    ].join(' ')}
+                    aria-label={image.isPrimary ? 'Main photo' : 'Set as main photo'}
+                    title={image.isPrimary ? 'Main photo' : 'Set as main photo'}
+                  >
+                    <Star className="h-3 w-3" fill={image.isPrimary ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeExistingImage(image.id)}
+                    disabled={busyImageAction !== null}
                     className="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
                     aria-label="Remove photo"
                   >
@@ -361,7 +451,18 @@ function CreateListing() {
                 </div>
               ))}
               {existingImages.length + newFiles.length < MAX_IMAGES && (
-                <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-ink-faint transition-colors hover:border-primary/40 hover:text-primary">
+                <label
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setIsDropzoneActive(true)
+                  }}
+                  onDragLeave={() => setIsDropzoneActive(false)}
+                  onDrop={handleDropFiles}
+                  className={[
+                    'flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-ink-faint transition-colors hover:border-primary/40 hover:text-primary',
+                    isDropzoneActive ? 'border-primary bg-primary/5 text-primary' : 'border-border',
+                  ].join(' ')}
+                >
                   <ImagePlus className="h-5 w-5" aria-hidden="true" />
                   <span className="text-[11px]">Add</span>
                   <input
@@ -375,7 +476,9 @@ function CreateListing() {
               )}
             </div>
             {errors.images && <p className="text-sm text-danger">{errors.images}</p>}
-            <p className="text-xs text-ink-soft">Up to {MAX_IMAGES} photos.</p>
+            <p className="text-xs text-ink-soft">
+              Up to {MAX_IMAGES} photos. Drag to reorder, or click the star to set the main photo.
+            </p>
           </div>
 
           <Button type="submit" size="lg" fullWidth loading={isSubmitting} className="mt-2">

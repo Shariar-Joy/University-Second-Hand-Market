@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Building2, CalendarDays, ChevronLeft, MapPin, MessageCircle, PackageSearch, ShoppingCart } from 'lucide-react'
+import {
+  Building2,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  MessageCircle,
+  PackageSearch,
+  ShoppingCart,
+} from 'lucide-react'
 import Button from '../../components/common/Button'
 import Badge from '../../components/ui/Badge'
 import Avatar from '../../components/common/Avatar'
@@ -50,18 +59,21 @@ function ProductDetails() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
 
   useEffect(() => {
     if (!slug) return
     let isMounted = true
     setIsLoading(true)
     setNotFound(false)
+    setActiveImageIndex(0)
 
     productService
       .getProductBySlug(slug)
       .then((fetched) => {
         if (!isMounted) return
         setProduct(fetched)
+        setActiveImageIndex(0)
         return productService.listProducts().then((all) => {
           if (!isMounted) return
           setRelatedProducts(all.filter((item) => item.category === fetched.category && item.id !== fetched.id).slice(0, 4))
@@ -122,6 +134,21 @@ function ProductDetails() {
   const statusBadge = STATUS_BADGE[product.status]
   const isOwner = user !== null && product.sellerId === user.id
 
+  const galleryImages =
+    product.imageDetails.length > 0
+      ? [...product.imageDetails].sort((a, b) => a.position - b.position).map((image) => image.url)
+      : [getProductImage(product)]
+  const hasMultipleImages = galleryImages.length > 1
+  const activeImage = galleryImages[activeImageIndex] ?? galleryImages[0]
+
+  function showPreviousImage() {
+    setActiveImageIndex((index) => (index === 0 ? galleryImages.length - 1 : index - 1))
+  }
+
+  function showNextImage() {
+    setActiveImageIndex((index) => (index === galleryImages.length - 1 ? 0 : index + 1))
+  }
+
   function handleAddToCart() {
     addItem(product!.id)
     showToast(`Added "${product!.name}" to cart`, 'success')
@@ -144,8 +171,51 @@ function ProductDetails() {
         transition={{ duration: 0.35 }}
         className="grid grid-cols-1 gap-10 md:grid-cols-2"
       >
-        <div className="overflow-hidden rounded-2xl border border-border bg-slate-100 shadow-card">
-          <img src={getProductImage(product)} alt={product.name} className="aspect-4/3 w-full object-cover" />
+        <div className="flex flex-col gap-3">
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-slate-100 shadow-card">
+            <img src={activeImage} alt={product.name} className="aspect-4/3 w-full object-cover" />
+            {hasMultipleImages && (
+              <>
+                <button
+                  type="button"
+                  onClick={showPreviousImage}
+                  aria-label="Previous photo"
+                  className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-card transition-colors hover:bg-white"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={showNextImage}
+                  aria-label="Next photo"
+                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-card transition-colors hover:bg-white"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+                  {activeImageIndex + 1} / {galleryImages.length}
+                </span>
+              </>
+            )}
+          </div>
+          {hasMultipleImages && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {galleryImages.map((url, index) => (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => setActiveImageIndex(index)}
+                  aria-label={`View photo ${index + 1}`}
+                  className={[
+                    'h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-colors',
+                    index === activeImageIndex ? 'border-primary' : 'border-transparent hover:border-border',
+                  ].join(' ')}
+                >
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-5">

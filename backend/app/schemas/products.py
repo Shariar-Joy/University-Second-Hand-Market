@@ -19,6 +19,15 @@ ALLOWED_CATEGORIES = {
 ALLOWED_CONDITIONS = {"New", "Like New", "Good", "Fair"}
 
 
+class ProductImageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    url: str
+    position: int
+    is_primary: bool
+
+
 class ProductOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,6 +42,7 @@ class ProductOut(BaseModel):
     university: str
     description: str | None = None
     images: list[str] = []
+    image_details: list[ProductImageOut] = []
     negotiable: bool
     location: str | None = None
     department: str | None = None
@@ -41,9 +51,9 @@ class ProductOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    @field_validator("images", mode="before")
+    @field_validator("images", "image_details", mode="before")
     @classmethod
-    def default_empty_images(cls, value: list[str] | None) -> list[str]:
+    def default_empty_list(cls, value: list | None) -> list:
         return value or []
 
 
@@ -129,8 +139,15 @@ class ProductStatusRequest(BaseModel):
     status: Literal["available", "reserved", "archived"]
 
 
-class RemoveImageRequest(BaseModel):
-    image_url: str
+class ReorderImagesRequest(BaseModel):
+    image_ids: list[int]
+
+    @field_validator("image_ids")
+    @classmethod
+    def image_ids_not_empty(cls, value: list[int]) -> list[int]:
+        if not value:
+            raise ValueError("Provide the images' new order.")
+        return value
 
 
 class MarkSoldRequest(BaseModel):
