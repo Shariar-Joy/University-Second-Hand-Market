@@ -1,15 +1,26 @@
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
 
 
-def list_all(db: Session, statuses: list[str] | None = None) -> list[Product]:
+def list_all(db: Session, statuses: list[str] | None = None, search: str | None = None) -> list[Product]:
     query = select(Product).order_by(Product.id)
     if statuses is not None:
         query = query.where(Product.status.in_(statuses))
+    if search:
+        term = f"%{search}%"
+        # .ilike() compiles to a native ILIKE on Postgres and to a lower()-wrapped LIKE on
+        # dialects without one (e.g. SQLite in tests), so this stays case-insensitive everywhere.
+        query = query.where(
+            or_(
+                Product.name.ilike(term),
+                Product.description.ilike(term),
+                Product.category.ilike(term),
+            )
+        )
     return list(db.execute(query).scalars())
 
 

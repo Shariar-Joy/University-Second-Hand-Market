@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import {
   BookOpen,
@@ -123,6 +123,7 @@ function Home() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [page, setPage] = useState(1)
   const [newsletterEmail, setNewsletterEmail] = useState('')
 
@@ -131,7 +132,21 @@ function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
+  // Backend-driven product search, kept separate from the initial load's state above so a
+  // search in progress/failing never clobbers the full listing or the site-wide stats.
+  const [searchResults, setSearchResults] = useState<Product[] | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const isMountedRef = useRef(true)
+
   const productsRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -159,14 +174,41 @@ function Home() {
     setPage(1)
   }, [normalizedQuery])
 
-  const filteredProducts = useMemo(() => {
-    if (!normalizedQuery) return products
-    return products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(normalizedQuery) ||
-        product.category.toLowerCase().includes(normalizedQuery),
-    )
-  }, [products, normalizedQuery])
+  // Debounce so fast typing doesn't fire a backend request per keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQuery(query.trim()), 350)
+    return () => clearTimeout(handle)
+  }, [query])
+
+  const runProductSearch = useCallback((term: string) => {
+    setIsSearching(true)
+    setSearchError('')
+    productService
+      .listProducts(term)
+      .then((results) => {
+        if (isMountedRef.current) setSearchResults(results)
+      })
+      .catch(() => {
+        if (!isMountedRef.current) return
+        setSearchResults([])
+        setSearchError('Could not search products right now. Please try again.')
+      })
+      .finally(() => {
+        if (isMountedRef.current) setIsSearching(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    if (!debouncedQuery) {
+      setSearchResults(null)
+      setSearchError('')
+      return
+    }
+    runProductSearch(debouncedQuery)
+  }, [debouncedQuery, runProductSearch])
+
+  const isProductSearchActive = debouncedQuery.length > 0
+  const displayedProducts = isProductSearchActive ? searchResults ?? [] : products
 
   const filteredTutors = useMemo(() => {
     if (!normalizedQuery) return tutors
@@ -177,8 +219,9 @@ function Home() {
     )
   }, [tutors, normalizedQuery])
 
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE))
-  const paginatedProducts = filteredProducts.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE)
+  const totalPages = Math.max(1, Math.ceil(displayedProducts.length / PRODUCTS_PER_PAGE))
+  const paginatedProducts = displayedProducts.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE)
+  const isShowingProductSkeleton = isLoading || (isProductSearchActive && isSearching)
 
   const stats = useMemo(() => {
     const universityCount = new Set([...products.map((p) => p.university), ...tutors.map((t) => t.university)]).size
@@ -317,9 +360,9 @@ function Home() {
           title="Products for sale"
           subtitle="Fresh listings from students across campus."
           action={
-            !isLoading && (
+            !isShowingProductSkeleton && (
               <span className="text-sm font-medium text-ink-soft">
-                {filteredProducts.length} listing{filteredProducts.length === 1 ? '' : 's'}
+                {displayedProducts.length} listing{displayedProducts.length === 1 ? '' : 's'}
               </span>
             )
           }
@@ -327,12 +370,24 @@ function Home() {
 
         {loadError ? (
           <EmptyState icon={ShoppingBag} title="Something went wrong" description={loadError} className="mt-8" />
-        ) : isLoading ? (
+        ) : isShowingProductSkeleton ? (
           <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 8 }, (_, index) => (
               <ProductCardSkeleton key={index} />
             ))}
           </div>
+        ) : isProductSearchActive && searchError ? (
+          <EmptyState
+            icon={ShoppingBag}
+            title="Something went wrong"
+            description={searchError}
+            className="mt-8"
+            action={
+              <Button variant="outline" onClick={() => runProductSearch(debouncedQuery)}>
+                Try Again
+              </Button>
+            }
+          />
         ) : paginatedProducts.length > 0 ? (
           <>
             <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -344,7 +399,7 @@ function Home() {
               <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           </>
-        ) : (
+        ) : isProductSearchActive ? (
           <EmptyState
             icon={ShoppingBag}
             title="No products match your search"
@@ -355,6 +410,13 @@ function Home() {
                 Clear Search
               </Button>
             }
+          />
+        ) : (
+          <EmptyState
+            icon={ShoppingBag}
+            title="No listings yet"
+            description="Check back soon — new listings show up here as students post them."
+            className="mt-8"
           />
         )}
       </section>

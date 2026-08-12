@@ -113,8 +113,10 @@ function toRequestBody(payload: ProductPayload) {
   }
 }
 
-export async function listProducts(): Promise<Product[]> {
-  const response = await apiClient.get<ProductResponse[]>('/products')
+export async function listProducts(search?: string): Promise<Product[]> {
+  const trimmed = search?.trim()
+  const path = trimmed ? `/products?search=${encodeURIComponent(trimmed)}` : '/products'
+  const response = await apiClient.get<ProductResponse[]>(path)
   return response.map(toProduct)
 }
 
