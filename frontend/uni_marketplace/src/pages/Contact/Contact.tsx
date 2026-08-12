@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Mail, Phone } from 'lucide-react'
+import { Clock, Mail, Phone, Send } from 'lucide-react'
 import Input from '../../components/common/Input'
 import Button from '../../components/common/Button'
+import { useToast } from '../../context/ToastContext'
+import { isValidEmailFormat } from '../../utils/emailValidation'
 import { APP_NAME } from '../../constants'
 
 interface FormValues {
@@ -20,8 +22,10 @@ const INFO_ITEMS = [
 ]
 
 function Contact() {
+  const { showToast } = useToast()
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES)
   const [submitted, setSubmitted] = useState(false)
+  const [newsletterEmail, setNewsletterEmail] = useState('')
 
   function updateField<K extends keyof FormValues>(field: K, value: FormValues[K]) {
     setValues((previous) => ({ ...previous, [field]: value }))
@@ -33,78 +37,123 @@ function Contact() {
     setValues(INITIAL_VALUES)
   }
 
+  function handleNewsletterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!isValidEmailFormat(newsletterEmail)) {
+      showToast('Enter a valid email address to subscribe.', 'error')
+      return
+    }
+    showToast("You're subscribed! We'll send new listings straight to your inbox.", 'success')
+    setNewsletterEmail('')
+  }
+
   return (
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="text-3xl font-extrabold text-ink sm:text-4xl">Contact Us</h1>
-        <p className="mt-3 text-ink-soft">Questions, feedback, or a campus safety concern? Reach out any time.</p>
+    <div className="flex flex-col">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <h1 className="text-3xl font-extrabold text-ink sm:text-4xl">Contact Us</h1>
+          <p className="mt-3 text-ink-soft">Questions, feedback, or a campus safety concern? Reach out any time.</p>
 
-        <div className="mt-8 flex flex-col gap-4">
-          {INFO_ITEMS.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 shadow-card">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Icon className="h-4.5 w-4.5" aria-hidden="true" />
-              </span>
-              <div>
-                <p className="text-xs text-ink-soft">{label}</p>
-                <p className="text-sm font-medium text-ink">{value}</p>
+          <div className="mt-8 flex flex-col gap-4">
+            {INFO_ITEMS.map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 shadow-card">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Icon className="h-4.5 w-4.5" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-xs text-ink-soft">{label}</p>
+                  <p className="text-sm font-medium text-ink">{value}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+            ))}
+          </div>
+        </motion.div>
 
-      <motion.form
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        onSubmit={handleSubmit}
-        noValidate
-        className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-6 shadow-card sm:p-8"
-      >
-        {submitted && (
-          <p className="rounded-xl bg-success-soft px-4 py-3 text-sm font-medium text-green-700" role="status">
-            Thanks for reaching out! The {APP_NAME} team will get back to you soon.
-          </p>
-        )}
+        <motion.form
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-6 shadow-card sm:p-8"
+        >
+          {submitted && (
+            <p className="rounded-xl bg-success-soft px-4 py-3 text-sm font-medium text-green-700" role="status">
+              Thanks for reaching out! The {APP_NAME} team will get back to you soon.
+            </p>
+          )}
 
-        <Input
-          label="Your Name"
-          name="name"
-          placeholder="Shariar Joy"
-          value={values.name}
-          onChange={(event) => updateField('name', event.target.value)}
-          required
-        />
-        <Input
-          label="Email"
-          name="email"
-          type="email"
-          placeholder="you@university.edu"
-          value={values.email}
-          onChange={(event) => updateField('email', event.target.value)}
-          required
-        />
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="message" className="text-sm font-medium text-ink">
-            Message <span className="text-danger">*</span>
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            rows={5}
-            placeholder="How can we help?"
-            value={values.message}
-            onChange={(event) => updateField('message', event.target.value)}
+          <Input
+            label="Your Name"
+            name="name"
+            placeholder="Shariar Joy"
+            value={values.name}
+            onChange={(event) => updateField('name', event.target.value)}
             required
-            className="w-full resize-none rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-primary focus:ring-4 focus:ring-primary/10"
           />
-        </div>
+          <Input
+            label="Email"
+            name="email"
+            type="email"
+            placeholder="you@university.edu"
+            value={values.email}
+            onChange={(event) => updateField('email', event.target.value)}
+            required
+          />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="message" className="text-sm font-medium text-ink">
+              Message <span className="text-danger">*</span>
+            </label>
+            <textarea
+              id="message"
+              name="message"
+              rows={5}
+              placeholder="How can we help?"
+              value={values.message}
+              onChange={(event) => updateField('message', event.target.value)}
+              required
+              className="w-full resize-none rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-primary focus:ring-4 focus:ring-primary/10"
+            />
+          </div>
 
-        <Button type="submit" size="lg" fullWidth>
-          Send Message
-        </Button>
-      </motion.form>
+          <Button type="submit" size="lg" fullWidth>
+            Send Message
+          </Button>
+        </motion.form>
+      </div>
+
+      <section className="mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col items-center gap-4 rounded-3xl bg-primary px-6 py-12 text-center text-white sm:px-12"
+        >
+          <Mail className="h-8 w-8" aria-hidden="true" />
+          <h2 className="text-2xl font-bold sm:text-3xl">Never miss a good deal</h2>
+          <p className="max-w-md text-white/90">
+            Get the newest listings from your campus delivered to your inbox every week.
+          </p>
+          <form onSubmit={handleNewsletterSubmit} className="mt-2 flex w-full max-w-md flex-col gap-2 sm:flex-row">
+            <input
+              type="email"
+              value={newsletterEmail}
+              onChange={(event) => setNewsletterEmail(event.target.value)}
+              placeholder="you@university.edu"
+              aria-label="Email address"
+              className="h-12 w-full rounded-xl border-0 bg-white px-4 text-sm text-ink outline-none placeholder:text-ink-faint focus:ring-4 focus:ring-white/30"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-primary transition-colors hover:bg-white/90 active:scale-[0.97]"
+            >
+              <Send className="h-4 w-4" aria-hidden="true" />
+              Subscribe
+            </button>
+          </form>
+        </motion.div>
+      </section>
     </div>
   )
 }

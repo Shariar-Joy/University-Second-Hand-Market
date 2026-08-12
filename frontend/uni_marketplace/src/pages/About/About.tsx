@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Handshake, Search, UserPlus } from 'lucide-react'
+import { ChevronDown, Handshake, Search, UserPlus } from 'lucide-react'
 import SectionTitle from '../../components/ui/SectionTitle'
 import { APP_NAME } from '../../constants'
 
@@ -20,6 +21,53 @@ const STEPS = [
     description: 'Arrange a safe, on-campus meetup with fellow students to complete the exchange.',
   },
 ]
+
+const FAQS = [
+  {
+    question: 'Who can use Campus Exchange?',
+    answer: 'Anyone with a verified university email can sign up — the marketplace is limited to real students only.',
+  },
+  {
+    question: 'How do I meet a seller safely?',
+    answer: 'We recommend arranging a public, on-campus meetup during daytime hours to inspect and exchange items.',
+  },
+  {
+    question: 'Is booking a tutor free?',
+    answer: 'Browsing tutor profiles is always free. Tutors set their own per-class rates, shown on each profile.',
+  },
+  {
+    question: 'Can I sell items outside the listed categories?',
+    answer: 'Yes — pick the closest matching category or "Other" when you create your listing.',
+  },
+]
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="rounded-2xl border border-border bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+        aria-expanded={open}
+      >
+        <span className="font-semibold text-ink">{question}</span>
+        <ChevronDown
+          className={['h-5 w-5 shrink-0 text-ink-soft transition-transform duration-200', open ? 'rotate-180' : ''].join(' ')}
+        />
+      </button>
+      <motion.div
+        initial={false}
+        animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+        className="overflow-hidden"
+      >
+        <p className="px-5 pb-4 text-sm text-ink-soft">{answer}</p>
+      </motion.div>
+    </div>
+  )
+}
 
 function About() {
   return (
@@ -70,6 +118,15 @@ function About() {
             letting them gather dust, while also making it simple to find affordable, peer-to-peer tutoring for the
             courses that need the most help.
           </p>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+        <SectionTitle eyebrow="FAQ" title="Frequently asked questions" align="center" />
+        <div className="mt-8 flex flex-col gap-3">
+          {FAQS.map((faq) => (
+            <FaqItem key={faq.question} question={faq.question} answer={faq.answer} />
+          ))}
         </div>
       </section>
     </div>
