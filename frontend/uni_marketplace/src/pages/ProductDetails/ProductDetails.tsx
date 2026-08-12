@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Heart,
   MapPin,
   MessageCircle,
   PackageSearch,
@@ -19,6 +20,7 @@ import ListingActions from '../../components/product/ListingActions'
 import { TextLineSkeleton } from '../../components/ui/LoadingSkeleton'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import { useWishlist } from '../../context/WishlistContext'
 import { ApiError } from '../../services/apiClient'
 import { getProductImage, handleImageFallback, type ProductCondition } from '../../data/products'
 import * as productService from '../../services/productService'
@@ -53,11 +55,13 @@ function ProductDetails() {
   const location = useLocation()
   const { user } = useAuth()
   const { showToast } = useToast()
+  const { isWishlisted, addToWishlist, removeFromWishlist, refresh: refreshWishlist } = useWishlist()
   const [product, setProduct] = useState<Product | null>(null)
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const [isWishlistBusy, setIsWishlistBusy] = useState(false)
 
   useEffect(() => {
     if (!slug) return
@@ -159,6 +163,34 @@ function ProductDetails() {
         productSlug: product!.slug,
       },
     })
+  }
+
+  async function handleToggleWishlist() {
+    if (!user) {
+      navigate(ROUTES.LOGIN, { state: { from: location.pathname } })
+      return
+    }
+    const productId = product!.id
+    setIsWishlistBusy(true)
+    try {
+      if (isWishlisted(productId)) {
+        await removeFromWishlist(productId)
+      } else {
+        await addToWishlist(productId)
+      }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        // Already wishlisted from another tab/click -- resync instead of showing an error.
+        await refreshWishlist()
+      } else {
+        showToast(
+          error instanceof ApiError ? error.message : 'Could not update your wishlist. Please try again.',
+          'error',
+        )
+      }
+    } finally {
+      setIsWishlistBusy(false)
+    }
   }
 
   return (
@@ -279,7 +311,7 @@ function ProductDetails() {
               />
             </div>
           ) : (
-            <div className="flex flex-col gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <Button
                 size="lg"
                 fullWidth
@@ -288,6 +320,22 @@ function ProductDetails() {
               >
                 <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />
                 {product.status === 'sold' ? 'Sold' : 'Contact Seller'}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                fullWidth
+                onClick={handleToggleWishlist}
+                loading={isWishlistBusy}
+              >
+                {!isWishlistBusy && (
+                  <Heart
+                    className="h-4.5 w-4.5"
+                    aria-hidden="true"
+                    fill={isWishlisted(product.id) ? 'currentColor' : 'none'}
+                  />
+                )}
+                {isWishlisted(product.id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
               </Button>
             </div>
           )}
