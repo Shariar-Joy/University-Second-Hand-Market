@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { Bell, Heart, Menu, Plus, ShoppingBag } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Bell, Heart, MessageCircle, Menu, Plus, ShoppingBag } from 'lucide-react'
 import Avatar from '../../common/Avatar'
 import Button from '../../common/Button'
 import Drawer from '../../ui/Drawer'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/ToastContext'
+import { useMessaging } from '../../../context/MessagingContext'
 import { APP_NAME } from '../../../constants'
 import { ROUTES } from '../../../routes/routePaths'
 
@@ -25,6 +27,7 @@ function navLinkClasses(isActive: boolean): string {
 function Navbar() {
   const { user } = useAuth()
   const { showToast } = useToast()
+  const { unreadCount } = useMessaging()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
 
@@ -66,6 +69,29 @@ function Navbar() {
           >
             <Bell className="h-5 w-5" />
           </button>
+
+          {user && (
+            <Link
+              to={ROUTES.MESSAGES}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-slate-100 hover:text-ink"
+              aria-label="Messages"
+            >
+              <MessageCircle className="h-5 w-5" />
+              <AnimatePresence>
+                {unreadCount > 0 && (
+                  <motion.span
+                    key={unreadCount}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Link>
+          )}
 
           {user && (
             <Link
@@ -128,6 +154,15 @@ function Navbar() {
             <Button to={ROUTES.SELL} fullWidth>
               <Plus className="h-4 w-4" aria-hidden="true" />
               Sell an Item
+            </Button>
+            <Button to={ROUTES.MESSAGES} variant="outline" fullWidth>
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              Messages
+              {unreadCount > 0 && (
+                <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Button>
             <Button to={ROUTES.WISHLIST} variant="outline" fullWidth>
               <Heart className="h-4 w-4" aria-hidden="true" />

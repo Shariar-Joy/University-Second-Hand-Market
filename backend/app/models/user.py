@@ -33,3 +33,9 @@ class User(Base):
         foreign_keys="Product.buyer_id", back_populates="buyer_account"
     )
     tutor_profiles: Mapped[list["Tutor"]] = relationship(back_populates="user")  # noqa: F821
+    buyer_conversations: Mapped[list["Conversation"]] = relationship(  # noqa: F821
+        foreign_keys="Conversation.buyer_id", back_populates="buyer", cascade="all, delete-orphan"
+    )
+    seller_conversations: Mapped[list["Conversation"]] = relationship(  # noqa: F821
+        foreign_keys="Conversation.seller_id", back_populates="seller", cascade="all, delete-orphan"
+    )

@@ -73,6 +73,16 @@ function AppRoutes() {
           }
         />
         <Route
+          path={ROUTES.MESSAGE_THREAD}
+          element={
+            <RequireAuth>
+              <PageTransition>
+                <Messages />
+              </PageTransition>
+            </RequireAuth>
+          }
+        />
+        <Route
           path={ROUTES.WISHLIST}
           element={
             <RequireAuth>
