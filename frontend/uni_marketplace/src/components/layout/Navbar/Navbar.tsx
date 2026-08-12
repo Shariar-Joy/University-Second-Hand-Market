@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Heart, MessageCircle, Menu, Plus, ShoppingBag } from 'lucide-react'
+import { Bell, GraduationCap, Heart, MessageCircle, Menu, Plus, ShoppingBag } from 'lucide-react'
 import Avatar from '../../common/Avatar'
 import Button from '../../common/Button'
 import Drawer from '../../ui/Drawer'
@@ -167,6 +167,10 @@ function Navbar() {
             <Button to={ROUTES.WISHLIST} variant="outline" fullWidth>
               <Heart className="h-4 w-4" aria-hidden="true" />
               Wishlist
+            </Button>
+            <Button to={ROUTES.BECOME_TUTOR} variant="outline" fullWidth>
+              <GraduationCap className="h-4 w-4" aria-hidden="true" />
+              Become a Tutor
             </Button>
             <Link to={ROUTES.PROFILE} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-slate-50">
               <Avatar name={user.fullName} src={user.profileImage} size="md" />

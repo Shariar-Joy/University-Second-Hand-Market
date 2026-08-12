@@ -1,26 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import {
-  BookOpen,
-  Bike,
-  Building2,
-  ChevronDown,
-  GraduationCap,
-  LayoutGrid,
-  Laptop,
-  Mail,
-  Music2,
-  Package,
-  PenTool,
-  Quote,
-  Send,
-  Shirt,
-  ShoppingBag,
-  SlidersHorizontal,
-  Sofa,
-  Trophy,
-  Users,
-} from 'lucide-react'
+import { Building2, GraduationCap, LayoutGrid, Quote, ShoppingBag, SlidersHorizontal, Users } from 'lucide-react'
 import SearchBar from '../../components/common/SearchBar'
 import Button from '../../components/common/Button'
 import ProductCard from '../../components/product/ProductCard'
@@ -34,27 +14,14 @@ import Pagination from '../../components/ui/Pagination'
 import Drawer from '../../components/ui/Drawer'
 import { ProductCardSkeleton, TutorCardSkeleton } from '../../components/ui/LoadingSkeleton'
 import { useAuth } from '../../context/AuthContext'
-import { useToast } from '../../context/ToastContext'
 import * as productService from '../../services/productService'
 import * as tutorService from '../../services/tutorService'
 import type { Product } from '../../services/productService'
 import type { Tutor } from '../../services/tutorService'
-import { isValidEmailFormat } from '../../utils/emailValidation'
 import { APP_NAME, APP_TAGLINE } from '../../constants'
+import { ROUTES } from '../../routes/routePaths'
 
 const PRODUCTS_PER_PAGE = 8
-
-const CATEGORIES = [
-  { name: 'Books', icon: BookOpen },
-  { name: 'Electronics', icon: Laptop },
-  { name: 'Furniture', icon: Sofa },
-  { name: 'Clothing', icon: Shirt },
-  { name: 'Bicycles', icon: Bike },
-  { name: 'Sports', icon: Trophy },
-  { name: 'Stationery', icon: PenTool },
-  { name: 'Instruments', icon: Music2 },
-  { name: 'Other', icon: Package },
-]
 
 const TESTIMONIALS = [
   {
@@ -76,63 +43,14 @@ const TESTIMONIALS = [
   },
 ]
 
-const FAQS = [
-  {
-    question: 'Who can use Campus Exchange?',
-    answer: 'Anyone with a verified university email can sign up — the marketplace is limited to real students only.',
-  },
-  {
-    question: 'How do I meet a seller safely?',
-    answer: 'We recommend arranging a public, on-campus meetup during daytime hours to inspect and exchange items.',
-  },
-  {
-    question: 'Is booking a tutor free?',
-    answer: 'Browsing tutor profiles is always free. Tutors set their own per-class rates, shown on each profile.',
-  },
-  {
-    question: 'Can I sell items outside the listed categories?',
-    answer: 'Yes — pick the closest matching category or "Other" when you create your listing.',
-  },
-]
-
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <div className="rounded-2xl border border-border bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
-        aria-expanded={open}
-      >
-        <span className="font-semibold text-ink">{question}</span>
-        <ChevronDown
-          className={['h-5 w-5 shrink-0 text-ink-soft transition-transform duration-200', open ? 'rotate-180' : ''].join(' ')}
-        />
-      </button>
-      <motion.div
-        initial={false}
-        animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-        className="overflow-hidden"
-      >
-        <p className="px-5 pb-4 text-sm text-ink-soft">{answer}</p>
-      </motion.div>
-    </div>
-  )
-}
-
 function Home() {
   const { user } = useAuth()
-  const { showToast } = useToast()
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [filters, setFilters] = useState<ProductFilterValues>(EMPTY_PRODUCT_FILTERS)
   const [debouncedFilters, setDebouncedFilters] = useState<ProductFilterValues>(EMPTY_PRODUCT_FILTERS)
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const [newsletterEmail, setNewsletterEmail] = useState('')
 
   // Unfiltered products, fetched once -- used only for the site-wide stats below, so a search or
   // filter never changes the "X+ Active Listings" counts.
@@ -157,8 +75,10 @@ function Home() {
     }
   }, [])
 
-  useEffect(() => {
+  const loadOverview = useCallback(() => {
     let isMounted = true
+    setIsLoading(true)
+    setLoadError('')
     Promise.all([productService.listProducts(), tutorService.listTutors()])
       .then(([fetchedProducts, fetchedTutors]) => {
         if (!isMounted) return
@@ -171,10 +91,15 @@ function Home() {
       .finally(() => {
         if (isMounted) setIsLoading(false)
       })
-
     return () => {
       isMounted = false
     }
+  }, [])
+
+  useEffect(() => {
+    const cleanup = loadOverview()
+    return cleanup
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const normalizedQuery = query.trim().toLowerCase()
@@ -266,21 +191,6 @@ function Home() {
     ]
   }, [products, tutors])
 
-  function handleCategoryClick(category: string) {
-    setQuery(category)
-    productsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  function handleNewsletterSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!isValidEmailFormat(newsletterEmail)) {
-      showToast('Enter a valid email address to subscribe.', 'error')
-      return
-    }
-    showToast("You're subscribed! We'll send new listings straight to your inbox.", 'success')
-    setNewsletterEmail('')
-  }
-
   return (
     <div className="flex flex-col">
       <section className="relative overflow-hidden bg-linear-to-b from-primary/5 via-white to-white pt-16 pb-20 sm:pt-20">
@@ -335,54 +245,11 @@ function Home() {
             <SearchBar value={query} onChange={setQuery} placeholder="Search for textbooks, laptops, tutors…" />
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="flex flex-wrap items-center justify-center gap-2"
-          >
-            {CATEGORIES.slice(0, 6).map(({ name, icon: Icon }) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => handleCategoryClick(name)}
-                className="flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-primary/40 hover:text-primary"
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                {name}
-              </button>
-            ))}
-          </motion.div>
-
           <div className="mt-6 grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
             {stats.map((stat, index) => (
               <StatsCard key={stat.label} icon={stat.icon} value={stat.value} label={stat.label} index={index} />
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <SectionTitle eyebrow="Categories" title="Shop by category" align="center" />
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {CATEGORIES.map(({ name, icon: Icon }, index) => (
-            <motion.button
-              key={name}
-              type="button"
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.3, delay: index * 0.04 }}
-              whileHover={{ y: -4 }}
-              onClick={() => handleCategoryClick(name)}
-              className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-white px-4 py-6 text-center shadow-card transition-shadow hover:shadow-card-hover"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <Icon className="h-6 w-6" aria-hidden="true" />
-              </span>
-              <span className="text-sm font-semibold text-ink">{name}</span>
-            </motion.button>
-          ))}
         </div>
       </section>
 
@@ -495,37 +362,56 @@ function Home() {
           <SectionTitle
             eyebrow="Peer Tutors"
             title="Learn from top students"
-            subtitle="Book affordable, subject-matter tutoring from verified peers."
+            subtitle="Connect with affordable, subject-matter tutoring from verified peers."
             action={
-              !isLoading && (
-                <span className="text-sm font-medium text-ink-soft">
-                  {filteredTutors.length} tutor{filteredTutors.length === 1 ? '' : 's'}
-                </span>
-              )
+              <div className="flex items-center gap-3">
+                {!isLoading && !loadError && (
+                  <span className="text-sm font-medium text-ink-soft">
+                    {filteredTutors.length} tutor{filteredTutors.length === 1 ? '' : 's'}
+                  </span>
+                )}
+                {user && (
+                  <Button to={ROUTES.BECOME_TUTOR} variant="outline" size="sm">
+                    <GraduationCap className="h-4 w-4" aria-hidden="true" />
+                    Become a Tutor
+                  </Button>
+                )}
+              </div>
             }
           />
 
-          {!loadError &&
-            (isLoading ? (
-              <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                {Array.from({ length: 4 }, (_, index) => (
-                  <TutorCardSkeleton key={index} />
-                ))}
-              </div>
-            ) : filteredTutors.length > 0 ? (
-              <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                {filteredTutors.map((tutor) => (
-                  <TutorCard key={tutor.id} tutor={tutor} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={Users}
-                title="No tutors match your search"
-                description="Try a different subject or clear your search."
-                className="mt-8"
-              />
-            ))}
+          {loadError ? (
+            <EmptyState
+              icon={Users}
+              title="Could not load tutors"
+              description={loadError}
+              action={
+                <Button variant="outline" onClick={loadOverview}>
+                  Try Again
+                </Button>
+              }
+              className="mt-8"
+            />
+          ) : isLoading ? (
+            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }, (_, index) => (
+                <TutorCardSkeleton key={index} />
+              ))}
+            </div>
+          ) : filteredTutors.length > 0 ? (
+            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {filteredTutors.map((tutor) => (
+                <TutorCard key={tutor.id} tutor={tutor} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Users}
+              title="No tutors match your search"
+              description="Try a different subject or clear your search."
+              className="mt-8"
+            />
+          )}
         </div>
       </section>
 
@@ -550,50 +436,6 @@ function Home() {
             </motion.div>
           ))}
         </div>
-      </section>
-
-      <section className="bg-slate-50 py-16">
-        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8">
-          <SectionTitle eyebrow="FAQ" title="Frequently asked questions" align="center" />
-          <div className="mt-8 flex flex-col gap-3">
-            {FAQS.map((faq) => (
-              <FaqItem key={faq.question} question={faq.question} answer={faq.answer} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-40px' }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col items-center gap-4 rounded-3xl bg-primary px-6 py-12 text-center text-white sm:px-12"
-        >
-          <Mail className="h-8 w-8" aria-hidden="true" />
-          <h2 className="text-2xl font-bold sm:text-3xl">Never miss a good deal</h2>
-          <p className="max-w-md text-white/90">
-            Get the newest listings from your campus delivered to your inbox every week.
-          </p>
-          <form onSubmit={handleNewsletterSubmit} className="mt-2 flex w-full max-w-md flex-col gap-2 sm:flex-row">
-            <input
-              type="email"
-              value={newsletterEmail}
-              onChange={(event) => setNewsletterEmail(event.target.value)}
-              placeholder="you@university.edu"
-              aria-label="Email address"
-              className="h-12 w-full rounded-xl border-0 bg-white px-4 text-sm text-ink outline-none placeholder:text-ink-faint focus:ring-4 focus:ring-white/30"
-            />
-            <button
-              type="submit"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-primary transition-colors hover:bg-white/90 active:scale-[0.97]"
-            >
-              <Send className="h-4 w-4" aria-hidden="true" />
-              Subscribe
-            </button>
-          </form>
-        </motion.div>
       </section>
     </div>
   )

@@ -12,6 +12,7 @@ export const ROUTES = {
   EDIT_LISTING: '/listings/:id/edit',
   PRODUCT_DETAILS: '/products/:slug',
   TUTOR_DETAILS: '/tutors/:slug',
+  BECOME_TUTOR: '/become-tutor',
 } as const
 
 export function productDetailsPath(slug: string): string {

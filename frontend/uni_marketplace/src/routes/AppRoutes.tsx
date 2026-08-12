@@ -11,6 +11,7 @@ import Profile from '../pages/Profile'
 import CreateListing from '../pages/CreateListing'
 import ProductDetails from '../pages/ProductDetails'
 import TutorDetails from '../pages/TutorDetails'
+import BecomeTutor from '../pages/BecomeTutor'
 import NotFound from '../pages/NotFound'
 import RequireAuth from './RequireAuth'
 import PageTransition from '../components/layout/PageTransition'
@@ -136,6 +137,16 @@ function AppRoutes() {
             <PageTransition>
               <TutorDetails />
             </PageTransition>
+          }
+        />
+        <Route
+          path={ROUTES.BECOME_TUTOR}
+          element={
+            <RequireAuth>
+              <PageTransition>
+                <BecomeTutor />
+              </PageTransition>
+            </RequireAuth>
           }
         />
         <Route

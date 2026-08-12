@@ -14,6 +14,7 @@ from app.schemas.messaging import (
     MessageOut,
 )
 from app.schemas.products import ProductOut
+from app.schemas.tutors import TutorOut
 from app.services import messaging_service
 
 router = APIRouter(prefix="/conversations", tags=["messaging"])
@@ -24,7 +25,8 @@ def _to_conversation_out(conversation: Conversation, viewer_id: int) -> Conversa
         id=conversation.id,
         buyer=ConversationParticipantOut.model_validate(conversation.buyer),
         seller=ConversationParticipantOut.model_validate(conversation.seller),
-        product=ProductOut.model_validate(conversation.product),
+        product=ProductOut.model_validate(conversation.product) if conversation.product else None,
+        tutor=TutorOut.model_validate(conversation.tutor) if conversation.tutor else None,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
         last_message=MessageOut.model_validate(conversation.last_message) if conversation.last_message else None,
@@ -44,7 +46,10 @@ def create_conversation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    conversation = messaging_service.get_or_create_conversation(db, current_user, payload.product_id)
+    if payload.product_id is not None:
+        conversation = messaging_service.get_or_create_conversation(db, current_user, payload.product_id)
+    else:
+        conversation = messaging_service.get_or_create_tutor_conversation(db, current_user, payload.tutor_id)
     return _to_conversation_out(conversation, current_user.id)
 
 

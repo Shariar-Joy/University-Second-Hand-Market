@@ -6,11 +6,18 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.conversation import Conversation
 
 
+def _with_subject_options(query):
+    return query.options(
+        joinedload(Conversation.buyer),
+        joinedload(Conversation.seller),
+        joinedload(Conversation.product),
+        joinedload(Conversation.tutor),
+    )
+
+
 def get_by_id(db: Session, conversation_id: int) -> Conversation | None:
     return db.execute(
-        select(Conversation)
-        .where(Conversation.id == conversation_id)
-        .options(joinedload(Conversation.buyer), joinedload(Conversation.seller), joinedload(Conversation.product))
+        _with_subject_options(select(Conversation).where(Conversation.id == conversation_id))
     ).scalar_one_or_none()
 
 
@@ -26,19 +33,32 @@ def get_by_participants_and_product(
     ).scalar_one_or_none()
 
 
+def get_by_participants_and_tutor(db: Session, buyer_id: int, seller_id: int, tutor_id: int) -> Conversation | None:
+    return db.execute(
+        select(Conversation).where(
+            Conversation.buyer_id == buyer_id,
+            Conversation.seller_id == seller_id,
+            Conversation.tutor_id == tutor_id,
+        )
+    ).scalar_one_or_none()
+
+
 def list_for_user(db: Session, user_id: int) -> list[Conversation]:
     return list(
         db.execute(
-            select(Conversation)
-            .where(or_(Conversation.buyer_id == user_id, Conversation.seller_id == user_id))
-            .options(joinedload(Conversation.buyer), joinedload(Conversation.seller), joinedload(Conversation.product))
-            .order_by(Conversation.updated_at.desc())
+            _with_subject_options(
+                select(Conversation)
+                .where(or_(Conversation.buyer_id == user_id, Conversation.seller_id == user_id))
+                .order_by(Conversation.updated_at.desc())
+            )
         ).scalars()
     )
 
 
-def create(db: Session, buyer_id: int, seller_id: int, product_id: int) -> Conversation:
-    conversation = Conversation(buyer_id=buyer_id, seller_id=seller_id, product_id=product_id)
+def create(
+    db: Session, buyer_id: int, seller_id: int, *, product_id: int | None = None, tutor_id: int | None = None
+) -> Conversation:
+    conversation = Conversation(buyer_id=buyer_id, seller_id=seller_id, product_id=product_id, tutor_id=tutor_id)
     db.add(conversation)
     db.commit()
     db.refresh(conversation)

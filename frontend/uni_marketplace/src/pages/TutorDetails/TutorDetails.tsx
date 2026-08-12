@@ -1,39 +1,72 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CalendarClock, ChevronLeft, GraduationCap, UserRoundSearch } from 'lucide-react'
+import { Briefcase, CalendarClock, ChevronLeft, GraduationCap, MessageCircle, UserRoundSearch } from 'lucide-react'
 import Button from '../../components/common/Button'
 import Avatar from '../../components/common/Avatar'
 import StarRating from '../../components/common/StarRating'
 import EmptyState from '../../components/ui/EmptyState'
 import TutorCard from '../../components/tutor/TutorCard'
 import { TextLineSkeleton } from '../../components/ui/LoadingSkeleton'
+import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import { ApiError } from '../../services/apiClient'
 import * as tutorService from '../../services/tutorService'
 import type { Tutor } from '../../services/tutorService'
+import * as messagingService from '../../services/messagingService'
 import { formatBDT } from '../../utils/currency'
-import { ROUTES } from '../../routes/routePaths'
+import { messageThreadPath, ROUTES } from '../../routes/routePaths'
 
 function TutorDetails() {
   const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useAuth()
   const { showToast } = useToast()
-  const [tutors, setTutors] = useState<Tutor[]>([])
+
+  const [tutor, setTutor] = useState<Tutor | null>(null)
+  const [relatedTutors, setRelatedTutors] = useState<Tutor[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [isContactingTutor, setIsContactingTutor] = useState(false)
 
   useEffect(() => {
+    if (!slug) return
     let isMounted = true
+    setIsLoading(true)
+    setNotFound(false)
+
     tutorService
-      .listTutors()
+      .getTutorBySlug(slug)
       .then((fetched) => {
-        if (isMounted) setTutors(fetched)
+        if (!isMounted) return
+        setTutor(fetched)
+        return tutorService.listTutors().then((all) => {
+          if (!isMounted) return
+          setRelatedTutors(
+            all
+              .filter((item) => item.id !== fetched.id && item.subjects.some((subject) => fetched.subjects.includes(subject)))
+              .slice(0, 4),
+          )
+        })
+      })
+      .catch((error) => {
+        if (!isMounted) return
+        if (error instanceof ApiError && error.status === 404) {
+          setNotFound(true)
+        } else {
+          showToast('Could not load this tutor profile. Please try again.', 'error')
+        }
       })
       .finally(() => {
         if (isMounted) setIsLoading(false)
       })
+
     return () => {
       isMounted = false
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
 
   if (isLoading) {
     return (
@@ -48,9 +81,7 @@ function TutorDetails() {
     )
   }
 
-  const tutor = tutors.find((item) => item.slug === slug)
-
-  if (!tutor) {
+  if (notFound || !tutor) {
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6 lg:px-8">
         <EmptyState
@@ -67,16 +98,26 @@ function TutorDetails() {
     )
   }
 
-  const currentTutor = tutor
+  const isOwner = user !== null && tutor.userId === user.id
+  const isContactable = tutor.userId !== null
 
-  const relatedTutors = tutors
-    .filter(
-      (item) => item.id !== currentTutor.id && item.subjects.some((subject) => currentTutor.subjects.includes(subject)),
-    )
-    .slice(0, 4)
-
-  function handleBookClass() {
-    showToast(`Booking request sent to ${currentTutor.name}`, 'info')
+  async function handleContactTutor() {
+    if (!user) {
+      navigate(ROUTES.LOGIN, { state: { from: location.pathname } })
+      return
+    }
+    setIsContactingTutor(true)
+    try {
+      const conversation = await messagingService.startTutorConversation(tutor!.id)
+      navigate(messageThreadPath(conversation.id))
+    } catch (error) {
+      showToast(
+        error instanceof ApiError ? error.message : 'Could not start a conversation. Please try again.',
+        'error',
+      )
+    } finally {
+      setIsContactingTutor(false)
+    }
   }
 
   return (
@@ -99,6 +140,7 @@ function TutorDetails() {
             <p className="flex items-center gap-1.5 text-sm text-ink-soft">
               <GraduationCap className="h-4 w-4 shrink-0" aria-hidden="true" />
               {tutor.university}
+              {tutor.department && <span> · {tutor.department}</span>}
             </p>
             <StarRating rating={tutor.rating} reviewCount={tutor.reviewCount} />
           </div>
@@ -116,14 +158,41 @@ function TutorDetails() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-4 text-sm text-ink-soft">
-          <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
-          Reach out to arrange a class time that works for both of you.
+        {tutor.bio && <p className="text-sm text-ink-soft">{tutor.bio}</p>}
+
+        <div className="flex flex-col gap-2 text-sm text-ink-soft">
+          {tutor.availability && (
+            <span className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {tutor.availability}
+            </span>
+          )}
+          {tutor.experience !== null && tutor.experience !== undefined && (
+            <span className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {tutor.experience} {tutor.experience === 1 ? 'year' : 'years'} of tutoring experience
+            </span>
+          )}
         </div>
 
-        <Button size="lg" onClick={handleBookClass}>
-          Book a Class
-        </Button>
+        {isOwner ? (
+          <div className="flex flex-col gap-2 pt-2">
+            <p className="text-sm font-medium text-ink-soft">This is your tutor profile.</p>
+            <Button to={ROUTES.BECOME_TUTOR} size="lg">
+              Manage Profile
+            </Button>
+          </div>
+        ) : (
+          <Button
+            size="lg"
+            onClick={handleContactTutor}
+            disabled={!isContactable}
+            loading={isContactingTutor}
+          >
+            {!isContactingTutor && <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />}
+            {isContactable ? 'Contact Tutor' : 'Contact Unavailable'}
+          </Button>
+        )}
       </motion.div>
 
       {relatedTutors.length > 0 && (

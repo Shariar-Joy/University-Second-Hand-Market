@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.crud import conversation as conversation_crud
 from app.crud import message as message_crud
 from app.crud import product as product_crud
+from app.crud import tutor as tutor_crud
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.user import User
@@ -56,6 +57,26 @@ def get_or_create_conversation(db: Session, current_user: User, product_id: int)
         return existing
 
     return conversation_crud.create(db, buyer_id=current_user.id, seller_id=product.seller_id, product_id=product_id)
+
+
+def get_or_create_tutor_conversation(db: Session, current_user: User, tutor_id: int) -> Conversation:
+    tutor = tutor_crud.get_by_id(db, tutor_id)
+    if tutor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor profile not found.")
+    if tutor.user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="This tutor no longer has an active account."
+        )
+    if tutor.user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot start a conversation with yourself."
+        )
+
+    existing = conversation_crud.get_by_participants_and_tutor(db, current_user.id, tutor.user_id, tutor_id)
+    if existing is not None:
+        return existing
+
+    return conversation_crud.create(db, buyer_id=current_user.id, seller_id=tutor.user_id, tutor_id=tutor_id)
 
 
 def is_unread(conversation: Conversation, viewer_id: int) -> bool:

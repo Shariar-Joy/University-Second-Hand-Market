@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Building2,
   Camera,
+  GraduationCap,
   Hash,
   LogOut,
   Mail,
@@ -31,30 +32,39 @@ import { ApiError } from '../../services/apiClient'
 import * as authService from '../../services/authService'
 import * as productService from '../../services/productService'
 import type { Product } from '../../services/productService'
+import * as tutorService from '../../services/tutorService'
+import type { Tutor } from '../../services/tutorService'
 import { universities } from '../../data/universities'
-import { ROUTES } from '../../routes/routePaths'
+import { formatBDT } from '../../utils/currency'
+import { ROUTES, tutorDetailsPath } from '../../routes/routePaths'
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024
 const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
-type TabKey = 'mine' | 'sold' | 'purchased'
+type ProductTabKey = 'mine' | 'sold' | 'purchased'
+type TabKey = ProductTabKey | 'tutoring'
 
 const TABS: { key: TabKey; label: string; icon: typeof Package }[] = [
   { key: 'mine', label: 'My Listings', icon: Package },
   { key: 'sold', label: 'Sold', icon: Tag },
   { key: 'purchased', label: 'Purchased', icon: ShoppingBag },
+  { key: 'tutoring', label: 'Tutoring', icon: GraduationCap },
 ]
 
-const TAB_FETCHERS: Record<TabKey, () => Promise<Product[]>> = {
+const TAB_FETCHERS: Record<ProductTabKey, () => Promise<Product[]>> = {
   mine: productService.listMine,
   sold: productService.listSold,
   purchased: productService.listPurchased,
 }
 
-const TAB_EMPTY_COPY: Record<TabKey, { title: string; description: string }> = {
+const TAB_EMPTY_COPY: Record<ProductTabKey, { title: string; description: string }> = {
   mine: { title: "You haven't listed anything yet", description: 'Items you list for sale will show up here.' },
   sold: { title: 'Nothing sold yet', description: 'Mark one of your listings as sold to see it here.' },
   purchased: { title: "You haven't bought anything yet", description: 'Items you purchase from other students will show up here.' },
+}
+
+function isProductTab(tab: TabKey): tab is ProductTabKey {
+  return tab !== 'tutoring'
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -77,19 +87,22 @@ function Profile() {
   const [editErrors, setEditErrors] = useState<Record<string, string>>({})
 
   const [activeTab, setActiveTab] = useState<TabKey>('mine')
-  const [listingsByTab, setListingsByTab] = useState<Record<TabKey, Product[] | null>>({
+  const [listingsByTab, setListingsByTab] = useState<Record<ProductTabKey, Product[] | null>>({
     mine: null,
     sold: null,
     purchased: null,
   })
   const [loadingTab, setLoadingTab] = useState<TabKey | null>(null)
 
+  const [tutorProfile, setTutorProfile] = useState<Tutor | null | undefined>(undefined)
+  const [isTutorLoading, setIsTutorLoading] = useState(false)
+
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
   const [deleteError, setDeleteError] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
 
-  async function fetchTab(tab: TabKey) {
+  async function fetchTab(tab: ProductTabKey) {
     setLoadingTab(tab)
     try {
       const products = await TAB_FETCHERS[tab]()
@@ -101,8 +114,29 @@ function Profile() {
     }
   }
 
+  async function fetchTutorProfile() {
+    setIsTutorLoading(true)
+    try {
+      const profile = await tutorService.getMyTutorProfile()
+      setTutorProfile(profile)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        setTutorProfile(null)
+      } else {
+        showToast(errorMessage(error, 'Could not load your tutor profile.'), 'error')
+        setTutorProfile(null)
+      }
+    } finally {
+      setIsTutorLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!user) return
+    if (activeTab === 'tutoring') {
+      if (tutorProfile === undefined) fetchTutorProfile()
+      return
+    }
     if (listingsByTab[activeTab] === null) {
       fetchTab(activeTab)
     }
@@ -265,7 +299,7 @@ function Profile() {
     ...(user.phone ? [{ icon: Phone, label: 'Phone', value: user.phone }] : []),
   ]
 
-  const activeProducts = listingsByTab[activeTab]
+  const activeProducts = isProductTab(activeTab) ? listingsByTab[activeTab] : null
   const isActiveTabLoading = loadingTab === activeTab
 
   return (
@@ -358,42 +392,87 @@ function Profile() {
               </button>
             ))}
           </div>
-          <Button to={ROUTES.SELL} size="sm">
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            New Listing
-          </Button>
+          {isProductTab(activeTab) && (
+            <Button to={ROUTES.SELL} size="sm">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New Listing
+            </Button>
+          )}
         </div>
 
         <div className="mt-6">
-          {isActiveTabLoading && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <ProductCardSkeleton key={index} />
-              ))}
-            </div>
-          )}
-
-          {!isActiveTabLoading && activeProducts && activeProducts.length === 0 && (
-            <EmptyState icon={TABS.find((tab) => tab.key === activeTab)!.icon} {...TAB_EMPTY_COPY[activeTab]} />
-          )}
-
-          {!isActiveTabLoading && activeProducts && activeProducts.length > 0 && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {activeProducts.map((product) => (
-                <div key={product.id} className="flex flex-col gap-2">
-                  <ProductCard product={product} />
-                  {activeTab === 'mine' ? (
-                    <ListingActions product={product} onUpdated={handleListingUpdated} onDeleted={handleListingDeleted} />
-                  ) : (
-                    product.status === 'sold' && (
-                      <p className="text-center text-xs text-ink-soft">
-                        Sold{product.buyerName ? ` to ${product.buyerName}` : ''}
-                      </p>
-                    )
-                  )}
+          {activeTab === 'tutoring' ? (
+            isTutorLoading ? (
+              <div className="animate-pulse rounded-2xl border border-border p-6">
+                <div className="h-5 w-1/3 rounded bg-slate-200" />
+                <div className="mt-4 h-4 w-2/3 rounded bg-slate-200" />
+              </div>
+            ) : tutorProfile ? (
+              <div className="flex flex-col gap-4 rounded-2xl border border-border p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar name={tutorProfile.name} size="md" />
+                  <div>
+                    <p className="font-semibold text-ink">{tutorProfile.name}</p>
+                    <p className="text-sm text-ink-soft">{tutorProfile.subjects.join(', ')}</p>
+                    <p className="text-sm text-ink-soft">{formatBDT(tutorProfile.pricePerClass)}/class</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div className="flex gap-2">
+                  <Button to={tutorDetailsPath(tutorProfile.slug)} variant="outline" size="sm">
+                    View Public Profile
+                  </Button>
+                  <Button to={ROUTES.BECOME_TUTOR} size="sm">
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <EmptyState
+                icon={GraduationCap}
+                title="You're not a tutor yet"
+                description="Share your knowledge and earn on your own schedule by tutoring fellow students."
+                action={
+                  <Button to={ROUTES.BECOME_TUTOR}>
+                    <GraduationCap className="h-4 w-4" aria-hidden="true" />
+                    Become a Tutor
+                  </Button>
+                }
+              />
+            )
+          ) : (
+            <>
+              {isActiveTabLoading && (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <ProductCardSkeleton key={index} />
+                  ))}
+                </div>
+              )}
+
+              {!isActiveTabLoading && activeProducts && activeProducts.length === 0 && (
+                <EmptyState icon={TABS.find((tab) => tab.key === activeTab)!.icon} {...TAB_EMPTY_COPY[activeTab]} />
+              )}
+
+              {!isActiveTabLoading && activeProducts && activeProducts.length > 0 && (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {activeProducts.map((product) => (
+                    <div key={product.id} className="flex flex-col gap-2">
+                      <ProductCard product={product} />
+                      {activeTab === 'mine' ? (
+                        <ListingActions product={product} onUpdated={handleListingUpdated} onDeleted={handleListingDeleted} />
+                      ) : (
+                        product.status === 'sold' && (
+                          <p className="text-center text-xs text-ink-soft">
+                            Sold{product.buyerName ? ` to ${product.buyerName}` : ''}
+                          </p>
+                        )
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </motion.div>

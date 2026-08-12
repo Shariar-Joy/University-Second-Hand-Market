@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.schemas.products import ProductOut
+from app.schemas.tutors import TutorOut
 
 _MAX_MESSAGE_LENGTH = 2000
 
@@ -31,7 +32,8 @@ class ConversationOut(BaseModel):
     id: int
     buyer: ConversationParticipantOut
     seller: ConversationParticipantOut
-    product: ProductOut
+    product: ProductOut | None = None
+    tutor: TutorOut | None = None
     created_at: datetime
     updated_at: datetime
     last_message: MessageOut | None = None
@@ -44,7 +46,14 @@ class ConversationMessagesOut(BaseModel):
 
 
 class ConversationCreateRequest(BaseModel):
-    product_id: int
+    product_id: int | None = None
+    tutor_id: int | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_subject(self) -> "ConversationCreateRequest":
+        if (self.product_id is None) == (self.tutor_id is None):
+            raise ValueError("Provide exactly one of product_id or tutor_id.")
+        return self
 
 
 class MessageCreateRequest(BaseModel):

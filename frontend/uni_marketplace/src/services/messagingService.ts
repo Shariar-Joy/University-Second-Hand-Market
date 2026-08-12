@@ -1,6 +1,8 @@
 import { apiClient } from './apiClient'
 import { toProduct } from './productService'
 import type { Product, ProductResponse } from './productService'
+import { toTutor } from './tutorService'
+import type { Tutor, TutorResponse } from './tutorService'
 
 export interface ConversationParticipant {
   id: number
@@ -20,7 +22,8 @@ export interface Conversation {
   id: number
   buyer: ConversationParticipant
   seller: ConversationParticipant
-  product: Product
+  product: Product | null
+  tutor: Tutor | null
   createdAt: string
   updatedAt: string
   lastMessage: Message | null
@@ -45,7 +48,8 @@ interface ConversationResponse {
   id: number
   buyer: ParticipantResponse
   seller: ParticipantResponse
-  product: ProductResponse
+  product: ProductResponse | null
+  tutor: TutorResponse | null
   created_at: string
   updated_at: string
   last_message: MessageResponse | null
@@ -76,7 +80,8 @@ function toConversation(response: ConversationResponse): Conversation {
     id: response.id,
     buyer: toParticipant(response.buyer),
     seller: toParticipant(response.seller),
-    product: toProduct(response.product),
+    product: response.product ? toProduct(response.product) : null,
+    tutor: response.tutor ? toTutor(response.tutor) : null,
     createdAt: response.created_at,
     updatedAt: response.updated_at,
     lastMessage: response.last_message ? toMessage(response.last_message) : null,
@@ -91,6 +96,11 @@ export async function listConversations(): Promise<Conversation[]> {
 
 export async function startConversation(productId: number): Promise<Conversation> {
   const response = await apiClient.post<ConversationResponse>('/conversations', { product_id: productId })
+  return toConversation(response)
+}
+
+export async function startTutorConversation(tutorId: number): Promise<Conversation> {
+  const response = await apiClient.post<ConversationResponse>('/conversations', { tutor_id: tutorId })
   return toConversation(response)
 }
 
