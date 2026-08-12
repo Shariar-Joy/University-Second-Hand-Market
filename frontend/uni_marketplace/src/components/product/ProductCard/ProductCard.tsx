@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Eye, MapPin, ShoppingCart } from 'lucide-react'
+import { Eye, MapPin } from 'lucide-react'
 import Button from '../../common/Button'
 import Badge from '../../ui/Badge'
 import Modal from '../../ui/Modal'
-import { useCart } from '../../../context/CartContext'
-import { useToast } from '../../../context/ToastContext'
 import { getProductImage, handleImageFallback, type ProductCondition } from '../../../data/products'
 import type { Product } from '../../../services/productService'
 import { formatBDT } from '../../../utils/currency'
@@ -30,19 +28,11 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product }: ProductCardProps) {
-  const { addItem } = useCart()
-  const { showToast } = useToast()
   const [quickViewOpen, setQuickViewOpen] = useState(false)
-
-  function handleAddToCart() {
-    addItem(product.id)
-    showToast(`Added "${product.name}" to cart`, 'success')
-  }
 
   const conditionVariant = CONDITION_VARIANT[product.condition as ProductCondition] ?? 'neutral'
   const detailsPath = productDetailsPath(product.slug)
   const statusBadge = STATUS_BADGE[product.status]
-  const isAvailable = product.status === 'available'
 
   return (
     <>
@@ -96,9 +86,8 @@ function ProductCard({ product }: ProductCardProps) {
           </p>
           <div className="mt-auto flex items-center justify-between pt-2">
             <span className="text-lg font-bold text-ink">{formatBDT(product.price)}</span>
-            <Button size="sm" onClick={handleAddToCart} disabled={!isAvailable}>
-              <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-              Add
+            <Button to={detailsPath} size="sm">
+              View Details
             </Button>
           </div>
         </div>
@@ -125,18 +114,7 @@ function ProductCard({ product }: ProductCardProps) {
             </p>
             <span className="text-xl font-bold text-ink">{formatBDT(product.price)}</span>
             <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row">
-              <Button
-                fullWidth
-                disabled={!isAvailable}
-                onClick={() => {
-                  handleAddToCart()
-                  setQuickViewOpen(false)
-                }}
-              >
-                <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                Add to Cart
-              </Button>
-              <Button to={detailsPath} variant="outline" fullWidth>
+              <Button to={detailsPath} fullWidth onClick={() => setQuickViewOpen(false)}>
                 View Details
               </Button>
             </div>

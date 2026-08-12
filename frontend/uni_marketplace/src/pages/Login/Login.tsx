@@ -14,6 +14,7 @@ import { ROUTES } from '../../routes/routePaths'
 interface LocationState {
   justRegistered?: boolean
   email?: string
+  from?: string
 }
 
 function Login() {
@@ -51,7 +52,7 @@ function Login() {
     try {
       const user = await authService.login({ email, password, rememberMe })
       setUser(user)
-      navigate(ROUTES.HOME, { replace: true })
+      navigate(state?.from ?? ROUTES.HOME, { replace: true })
     } catch (error) {
       setFormError(extractErrorMessage(error, 'Invalid email or password.'))
     } finally {

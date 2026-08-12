@@ -4,7 +4,7 @@ export const ROUTES = {
   REGISTER: '/register',
   ABOUT: '/about',
   CONTACT: '/contact',
-  CART: '/cart',
+  MESSAGES: '/messages',
   PROFILE: '/profile',
   SELL: '/sell',
   EDIT_LISTING: '/listings/:id/edit',
