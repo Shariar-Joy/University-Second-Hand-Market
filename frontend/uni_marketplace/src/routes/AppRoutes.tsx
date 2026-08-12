@@ -6,6 +6,7 @@ import Register from '../pages/Register'
 import About from '../pages/About'
 import Contact from '../pages/Contact'
 import Messages from '../pages/Messages'
+import Wishlist from '../pages/Wishlist'
 import Profile from '../pages/Profile'
 import CreateListing from '../pages/CreateListing'
 import ProductDetails from '../pages/ProductDetails'
@@ -67,6 +68,16 @@ function AppRoutes() {
             <RequireAuth>
               <PageTransition>
                 <Messages />
+              </PageTransition>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.WISHLIST}
+          element={
+            <RequireAuth>
+              <PageTransition>
+                <Wishlist />
               </PageTransition>
             </RequireAuth>
           }

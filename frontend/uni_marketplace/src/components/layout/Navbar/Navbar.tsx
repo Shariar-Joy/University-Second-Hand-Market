@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { Bell, Menu, Plus, ShoppingBag } from 'lucide-react'
+import { Bell, Heart, Menu, Plus, ShoppingBag } from 'lucide-react'
 import Avatar from '../../common/Avatar'
 import Button from '../../common/Button'
 import Drawer from '../../ui/Drawer'
@@ -67,6 +67,16 @@ function Navbar() {
             <Bell className="h-5 w-5" />
           </button>
 
+          {user && (
+            <Link
+              to={ROUTES.WISHLIST}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-slate-100 hover:text-ink"
+              aria-label="Wishlist"
+            >
+              <Heart className="h-5 w-5" />
+            </Link>
+          )}
+
           {user ? (
             <Link to={ROUTES.PROFILE} className="ml-1" aria-label="Profile">
               <Avatar name={user.fullName} src={user.profileImage} size="sm" />
@@ -118,6 +128,10 @@ function Navbar() {
             <Button to={ROUTES.SELL} fullWidth>
               <Plus className="h-4 w-4" aria-hidden="true" />
               Sell an Item
+            </Button>
+            <Button to={ROUTES.WISHLIST} variant="outline" fullWidth>
+              <Heart className="h-4 w-4" aria-hidden="true" />
+              Wishlist
             </Button>
             <Link to={ROUTES.PROFILE} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-slate-50">
               <Avatar name={user.fullName} src={user.profileImage} size="md" />

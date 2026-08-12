@@ -38,7 +38,7 @@ interface ProductImageResponse {
   is_primary: boolean
 }
 
-interface ProductResponse {
+export interface ProductResponse {
   id: number
   slug: string
   name: string
@@ -60,7 +60,7 @@ interface ProductResponse {
   updated_at: string
 }
 
-function toProduct(response: ProductResponse): Product {
+export function toProduct(response: ProductResponse): Product {
   return {
     id: response.id,
     slug: response.slug,

@@ -47,6 +47,9 @@ class Product(Base):
         cascade="all, delete-orphan",
         order_by="(ProductImage.is_primary.desc(), ProductImage.position)",
     )
+    wishlisted_by: Mapped[list["Wishlist"]] = relationship(  # noqa: F821
+        back_populates="product", cascade="all, delete-orphan"
+    )
 
     @property
     def buyer_name(self) -> str | None:
