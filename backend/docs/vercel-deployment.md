@@ -1,7 +1,10 @@
 # Vercel deployment (frontend)
 
-The frontend (`frontend/uni_marketplace/`) needs no code changes to deploy — only environment
-variables.
+The frontend (`frontend/uni_marketplace/`) is a client-side-routed SPA (React Router), so it ships
+a `vercel.json` rewriting every path to `index.html` — without it, a direct URL, a refresh, or a
+bookmark on any non-root route (e.g. `/admin/products`, `/products/some-slug`) hits Vercel's static
+file server instead of the app and returns a platform 404. Beyond that, deploying only needs
+environment variables.
 
 ## 1. Import the project
 
