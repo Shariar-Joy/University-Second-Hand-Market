@@ -11,7 +11,7 @@ import { getProductImage, handleImageFallback } from '../../data/products'
 import * as messagingService from '../../services/messagingService'
 import type { Conversation, Message } from '../../services/messagingService'
 import { formatBDT } from '../../utils/currency'
-import { productDetailsPath, ROUTES } from '../../routes/routePaths'
+import { productDetailsPath, tutorDetailsPath, ROUTES } from '../../routes/routePaths'
 
 const POLL_INTERVAL_MS = 5_000
 
@@ -146,6 +146,17 @@ function ConversationThread({ conversationId, currentUserId, onConversationUpdat
   }
 
   const otherParty = currentUserId === conversation.buyer.id ? conversation.seller : conversation.buyer
+  const subjectPath = conversation.product
+    ? productDetailsPath(conversation.product.slug)
+    : conversation.tutor
+      ? tutorDetailsPath(conversation.tutor.slug)
+      : null
+  const subjectLabel = conversation.product
+    ? `${conversation.product.name} · ${formatBDT(conversation.product.price)}`
+    : conversation.tutor
+      ? `Tutoring · ${formatBDT(conversation.tutor.pricePerClass)}/class`
+      : ''
+  const subjectName = conversation.product?.name ?? conversation.tutor?.name ?? 'this conversation'
 
   return (
     <div className="flex flex-1 flex-col">
@@ -160,25 +171,29 @@ function ConversationThread({ conversationId, currentUserId, onConversationUpdat
         <Avatar name={otherParty.fullName} src={otherParty.profileImage} size="sm" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{otherParty.fullName}</p>
-          <Link
-            to={productDetailsPath(conversation.product.slug)}
-            className="truncate text-xs text-ink-soft transition-colors hover:text-primary"
-          >
-            {conversation.product.name} · {formatBDT(conversation.product.price)}
-          </Link>
+          {subjectPath && (
+            <Link
+              to={subjectPath}
+              className="truncate text-xs text-ink-soft transition-colors hover:text-primary"
+            >
+              {subjectLabel}
+            </Link>
+          )}
         </div>
-        <img
-          src={getProductImage(conversation.product)}
-          alt={conversation.product.name}
-          onError={(event) => handleImageFallback(event, conversation.product.category)}
-          className="h-10 w-10 shrink-0 rounded-lg object-cover"
-        />
+        {conversation.product && (
+          <img
+            src={getProductImage(conversation.product)}
+            alt={conversation.product.name}
+            onError={(event) => handleImageFallback(event, conversation.product!.category)}
+            className="h-10 w-10 shrink-0 rounded-lg object-cover"
+          />
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <p className="mt-8 text-center text-sm text-ink-soft">
-            Say hello — start the conversation about "{conversation.product.name}".
+            Say hello — start the conversation about "{subjectName}".
           </p>
         )}
         {messages.map((message) => {

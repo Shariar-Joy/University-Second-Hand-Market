@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -18,10 +18,15 @@ class Tutor(Base):
     rating: Mapped[float] = mapped_column(Numeric(2, 1, asdecimal=False), nullable=False)
     review_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    # unique -- a user has at most one tutor profile, mirroring how "Become a Tutor" is a
+    # singleton action rather than a listing a user can create many of.
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, unique=True, index=True
+    )
     department: Mapped[str | None] = mapped_column(String(120), nullable=True)
     experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     availability: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
@@ -29,3 +34,6 @@ class Tutor(Base):
     )
 
     user: Mapped["User | None"] = relationship(back_populates="tutor_profiles")  # noqa: F821
+    conversations: Mapped[list["Conversation"]] = relationship(  # noqa: F821
+        back_populates="tutor", cascade="all, delete-orphan"
+    )

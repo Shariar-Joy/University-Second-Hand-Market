@@ -87,6 +87,11 @@ function Messages() {
               {conversations.map((conversation) => {
                 const otherParty = user.id === conversation.buyer.id ? conversation.seller : conversation.buyer
                 const isActive = conversation.id === selectedId
+                const subjectLabel = conversation.product
+                  ? conversation.product.name
+                  : conversation.tutor
+                    ? `Tutoring · ${conversation.tutor.subjects[0] ?? conversation.tutor.name}`
+                    : ''
                 return (
                   <li key={conversation.id}>
                     <button
@@ -119,7 +124,7 @@ function Messages() {
                             </span>
                           )}
                         </div>
-                        <p className="truncate text-xs text-ink-soft">{conversation.product.name}</p>
+                        <p className="truncate text-xs text-ink-soft">{subjectLabel}</p>
                         {conversation.lastMessage && (
                           <p
                             className={[

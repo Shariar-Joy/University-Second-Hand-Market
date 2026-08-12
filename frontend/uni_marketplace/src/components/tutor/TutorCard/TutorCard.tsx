@@ -4,7 +4,6 @@ import { GraduationCap } from 'lucide-react'
 import Avatar from '../../common/Avatar'
 import Button from '../../common/Button'
 import StarRating from '../../common/StarRating'
-import { useToast } from '../../../context/ToastContext'
 import type { Tutor } from '../../../services/tutorService'
 import { formatBDT } from '../../../utils/currency'
 import { tutorDetailsPath } from '../../../routes/routePaths'
@@ -14,12 +13,7 @@ interface TutorCardProps {
 }
 
 function TutorCard({ tutor }: TutorCardProps) {
-  const { showToast } = useToast()
   const detailsPath = tutorDetailsPath(tutor.slug)
-
-  function handleBookClass() {
-    showToast(`Booking request sent to ${tutor.name}`, 'info')
-  }
 
   return (
     <motion.article
@@ -57,8 +51,8 @@ function TutorCard({ tutor }: TutorCardProps) {
         </span>
       </div>
 
-      <Button size="sm" fullWidth onClick={handleBookClass}>
-        Book a Class
+      <Button to={detailsPath} size="sm" fullWidth>
+        View Profile
       </Button>
     </motion.article>
   )
