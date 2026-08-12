@@ -8,7 +8,13 @@ from app.crud import product_image as product_image_crud
 from app.crud import user as user_crud
 from app.models.product import Product
 from app.models.user import User
-from app.schemas.products import MarkSoldRequest, ProductCreateRequest, ProductUpdateRequest
+from app.schemas.products import (
+    ALLOWED_CATEGORIES,
+    ALLOWED_CONDITIONS,
+    MarkSoldRequest,
+    ProductCreateRequest,
+    ProductUpdateRequest,
+)
 from app.services import image_service
 from app.utils.slugify import unique_slug
 
@@ -16,6 +22,7 @@ _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 _MAX_IMAGES_PER_PRODUCT = 5
 _PUBLICLY_VISIBLE_STATUSES = ["available", "reserved"]
+_ALLOWED_SORTS = {"newest", "oldest", "price_asc", "price_desc"}
 
 
 def _normalize_search(search: str | None) -> str | None:
@@ -27,8 +34,45 @@ def _normalize_search(search: str | None) -> str | None:
     return normalized or None
 
 
-def list_all(db: Session, search: str | None = None) -> list[Product]:
-    return product_crud.list_all(db, statuses=_PUBLICLY_VISIBLE_STATUSES, search=_normalize_search(search))
+def list_all(
+    db: Session,
+    search: str | None = None,
+    category: str | None = None,
+    condition: str | None = None,
+    min_price: int | None = None,
+    max_price: int | None = None,
+    availability: str | None = None,
+    sort: str | None = None,
+) -> list[Product]:
+    if category is not None and category not in ALLOWED_CATEGORIES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Select a valid category.")
+    if condition is not None and condition not in ALLOWED_CONDITIONS:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Select a valid condition.")
+    if availability is not None and availability not in _PUBLICLY_VISIBLE_STATUSES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Select a valid availability status.")
+    if sort is not None and sort not in _ALLOWED_SORTS:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Select a valid sort option.")
+    if min_price is not None and min_price < 0:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Minimum price can't be negative.")
+    if max_price is not None and max_price < 0:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Maximum price can't be negative.")
+    if min_price is not None and max_price is not None and min_price > max_price:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Minimum price can't be greater than maximum price.",
+        )
+
+    statuses = [availability] if availability is not None else _PUBLICLY_VISIBLE_STATUSES
+    return product_crud.list_all(
+        db,
+        statuses=statuses,
+        search=_normalize_search(search),
+        category=category,
+        condition=condition,
+        min_price=min_price,
+        max_price=max_price,
+        sort=sort,
+    )
 
 
 def get_by_slug(db: Session, slug: str) -> Product:

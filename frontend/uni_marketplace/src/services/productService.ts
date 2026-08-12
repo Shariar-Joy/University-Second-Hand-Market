@@ -113,10 +113,32 @@ function toRequestBody(payload: ProductPayload) {
   }
 }
 
-export async function listProducts(search?: string): Promise<Product[]> {
-  const trimmed = search?.trim()
-  const path = trimmed ? `/products?search=${encodeURIComponent(trimmed)}` : '/products'
-  const response = await apiClient.get<ProductResponse[]>(path)
+export type ProductSort = 'newest' | 'oldest' | 'price_asc' | 'price_desc'
+export type ProductAvailability = 'available' | 'reserved'
+
+export interface ProductListParams {
+  search?: string
+  category?: string
+  condition?: string
+  minPrice?: number
+  maxPrice?: number
+  availability?: ProductAvailability | ''
+  sort?: ProductSort | ''
+}
+
+export async function listProducts(params: ProductListParams = {}): Promise<Product[]> {
+  const query = new URLSearchParams()
+  const search = params.search?.trim()
+  if (search) query.set('search', search)
+  if (params.category) query.set('category', params.category)
+  if (params.condition) query.set('condition', params.condition)
+  if (params.minPrice !== undefined) query.set('min_price', String(params.minPrice))
+  if (params.maxPrice !== undefined) query.set('max_price', String(params.maxPrice))
+  if (params.availability) query.set('availability', params.availability)
+  if (params.sort) query.set('sort', params.sort)
+
+  const queryString = query.toString()
+  const response = await apiClient.get<ProductResponse[]>(`/products${queryString ? `?${queryString}` : ''}`)
   return response.map(toProduct)
 }
 
