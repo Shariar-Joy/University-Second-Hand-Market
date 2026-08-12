@@ -5,6 +5,7 @@ export const ROUTES = {
   ABOUT: '/about',
   CONTACT: '/contact',
   MESSAGES: '/messages',
+  MESSAGE_THREAD: '/messages/:conversationId',
   WISHLIST: '/wishlist',
   PROFILE: '/profile',
   SELL: '/sell',
@@ -23,4 +24,8 @@ export function editListingPath(id: number): string {
 
 export function tutorDetailsPath(slug: string): string {
   return `/tutors/${slug}`
+}
+
+export function messageThreadPath(conversationId: number): string {
+  return `/messages/${conversationId}`
 }

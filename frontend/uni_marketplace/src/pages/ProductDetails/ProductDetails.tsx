@@ -25,8 +25,9 @@ import { ApiError } from '../../services/apiClient'
 import { getProductImage, handleImageFallback, type ProductCondition } from '../../data/products'
 import * as productService from '../../services/productService'
 import type { Product } from '../../services/productService'
+import * as messagingService from '../../services/messagingService'
 import { formatBDT } from '../../utils/currency'
-import { ROUTES } from '../../routes/routePaths'
+import { messageThreadPath, ROUTES } from '../../routes/routePaths'
 
 const CONDITION_VARIANT: Record<ProductCondition, 'success' | 'primary' | 'neutral' | 'warning'> = {
   New: 'success',
@@ -62,6 +63,7 @@ function ProductDetails() {
   const [notFound, setNotFound] = useState(false)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [isWishlistBusy, setIsWishlistBusy] = useState(false)
+  const [isContactingSeller, setIsContactingSeller] = useState(false)
 
   useEffect(() => {
     if (!slug) return
@@ -151,18 +153,23 @@ function ProductDetails() {
     setActiveImageIndex((index) => (index === galleryImages.length - 1 ? 0 : index + 1))
   }
 
-  function handleContactSeller() {
+  async function handleContactSeller() {
     if (!user) {
       navigate(ROUTES.LOGIN, { state: { from: location.pathname } })
       return
     }
-    navigate(ROUTES.MESSAGES, {
-      state: {
-        sellerName: product!.seller,
-        productName: product!.name,
-        productSlug: product!.slug,
-      },
-    })
+    setIsContactingSeller(true)
+    try {
+      const conversation = await messagingService.startConversation(product!.id)
+      navigate(messageThreadPath(conversation.id))
+    } catch (error) {
+      showToast(
+        error instanceof ApiError ? error.message : 'Could not start a conversation. Please try again.',
+        'error',
+      )
+    } finally {
+      setIsContactingSeller(false)
+    }
   }
 
   async function handleToggleWishlist() {
@@ -317,8 +324,9 @@ function ProductDetails() {
                 fullWidth
                 onClick={handleContactSeller}
                 disabled={product.status === 'sold'}
+                loading={isContactingSeller}
               >
-                <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />
+                {!isContactingSeller && <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />}
                 {product.status === 'sold' ? 'Sold' : 'Contact Seller'}
               </Button>
               <Button

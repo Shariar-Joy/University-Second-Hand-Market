@@ -50,6 +50,9 @@ class Product(Base):
     wishlisted_by: Mapped[list["Wishlist"]] = relationship(  # noqa: F821
         back_populates="product", cascade="all, delete-orphan"
     )
+    conversations: Mapped[list["Conversation"]] = relationship(  # noqa: F821
+        back_populates="product", cascade="all, delete-orphan"
+    )
 
     @property
     def buyer_name(self) -> str | None:

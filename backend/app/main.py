@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
+from app.api.routes.messaging import router as messaging_router
 from app.api.routes.products import router as products_router
 from app.api.routes.tutors import router as tutors_router
 from app.api.routes.users import router as users_router
@@ -90,6 +91,7 @@ app.include_router(products_router, prefix=settings.API_V1_PREFIX)
 app.include_router(tutors_router, prefix=settings.API_V1_PREFIX)
 app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(wishlist_router, prefix=settings.API_V1_PREFIX)
+app.include_router(messaging_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/api/v1/health")
