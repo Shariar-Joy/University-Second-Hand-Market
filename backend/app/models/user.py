@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import Boolean, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -20,6 +20,10 @@ class User(Base):
     student_id: Mapped[str] = mapped_column(String(50), nullable=False)
     profile_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # `default=False` (not just `server_default`) so this is always sent as a real Python bool on
+    # insert -- relying on the server_default string alone reads back wrong on SQLite (e.g. in
+    # tests), which stores the literal text "false" and later evaluates bool("false") as True.
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

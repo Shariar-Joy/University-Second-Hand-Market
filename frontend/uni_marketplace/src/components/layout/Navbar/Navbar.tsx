@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, GraduationCap, Heart, MessageCircle, Menu, Plus, ShoppingBag } from 'lucide-react'
+import { Bell, GraduationCap, Heart, MessageCircle, Menu, Plus, Shield, ShoppingBag } from 'lucide-react'
 import Avatar from '../../common/Avatar'
 import Button from '../../common/Button'
 import Drawer from '../../ui/Drawer'
@@ -103,6 +103,16 @@ function Navbar() {
             </Link>
           )}
 
+          {user?.isAdmin && (
+            <Link
+              to={ROUTES.ADMIN}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-slate-100 hover:text-ink"
+              aria-label="Admin dashboard"
+            >
+              <Shield className="h-5 w-5" />
+            </Link>
+          )}
+
           {user ? (
             <Link to={ROUTES.PROFILE} className="ml-1" aria-label="Profile">
               <Avatar name={user.fullName} src={user.profileImage} size="sm" />
@@ -172,6 +182,12 @@ function Navbar() {
               <GraduationCap className="h-4 w-4" aria-hidden="true" />
               Become a Tutor
             </Button>
+            {user.isAdmin && (
+              <Button to={ROUTES.ADMIN} variant="outline" fullWidth>
+                <Shield className="h-4 w-4" aria-hidden="true" />
+                Admin Dashboard
+              </Button>
+            )}
             <Link to={ROUTES.PROFILE} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-slate-50">
               <Avatar name={user.fullName} src={user.profileImage} size="md" />
               <div>

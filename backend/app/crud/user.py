@@ -18,6 +18,10 @@ def get_by_id(db: Session, user_id: int) -> User | None:
     return db.get(User, user_id)
 
 
+def list_all(db: Session) -> list[User]:
+    return list(db.execute(select(User).order_by(User.id)).scalars())
+
+
 def create(db: Session, data: dict[str, Any]) -> User:
     user = User(
         full_name=data["full_name"],
@@ -28,6 +32,7 @@ def create(db: Session, data: dict[str, Any]) -> User:
         student_id=data["student_id"],
         phone=data.get("phone"),
         hashed_password=data["hashed_password"],
+        is_admin=False,
     )
     db.add(user)
     db.commit()

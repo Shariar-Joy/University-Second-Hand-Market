@@ -11,6 +11,7 @@ export interface User {
   phone?: string | null
   profileImage?: string | null
   bio?: string | null
+  isAdmin: boolean
   createdAt: string
 }
 
@@ -25,6 +26,7 @@ interface RawUser {
   phone: string | null
   profile_image: string | null
   bio: string | null
+  is_admin: boolean
   created_at: string
 }
 
@@ -44,6 +46,7 @@ function toUser(user: RawUser): User {
     phone: user.phone,
     profileImage: user.profile_image,
     bio: user.bio,
+    isAdmin: user.is_admin,
     createdAt: user.created_at,
   }
 }

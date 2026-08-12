@@ -13,6 +13,9 @@ export const ROUTES = {
   PRODUCT_DETAILS: '/products/:slug',
   TUTOR_DETAILS: '/tutors/:slug',
   BECOME_TUTOR: '/become-tutor',
+  ADMIN: '/admin',
+  ADMIN_USERS: '/admin/users',
+  ADMIN_PRODUCTS: '/admin/products',
 } as const
 
 export function productDetailsPath(slug: string): string {
