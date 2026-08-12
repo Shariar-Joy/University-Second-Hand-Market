@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from app.api.routes.admin import router as admin_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
 from app.api.routes.messaging import router as messaging_router
@@ -86,6 +87,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 app.include_router(health_router)
+app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(products_router, prefix=settings.API_V1_PREFIX)
 app.include_router(tutors_router, prefix=settings.API_V1_PREFIX)

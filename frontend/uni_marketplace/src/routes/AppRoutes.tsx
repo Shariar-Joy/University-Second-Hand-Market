@@ -12,8 +12,12 @@ import CreateListing from '../pages/CreateListing'
 import ProductDetails from '../pages/ProductDetails'
 import TutorDetails from '../pages/TutorDetails'
 import BecomeTutor from '../pages/BecomeTutor'
+import AdminDashboard from '../pages/Admin/AdminDashboard'
+import AdminUsers from '../pages/Admin/AdminUsers'
+import AdminProducts from '../pages/Admin/AdminProducts'
 import NotFound from '../pages/NotFound'
 import RequireAuth from './RequireAuth'
+import RequireAdmin from './RequireAdmin'
 import PageTransition from '../components/layout/PageTransition'
 import { ROUTES } from './routePaths'
 
@@ -147,6 +151,36 @@ function AppRoutes() {
                 <BecomeTutor />
               </PageTransition>
             </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN}
+          element={
+            <RequireAdmin>
+              <PageTransition>
+                <AdminDashboard />
+              </PageTransition>
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_USERS}
+          element={
+            <RequireAdmin>
+              <PageTransition>
+                <AdminUsers />
+              </PageTransition>
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_PRODUCTS}
+          element={
+            <RequireAdmin>
+              <PageTransition>
+                <AdminProducts />
+              </PageTransition>
+            </RequireAdmin>
           }
         />
         <Route

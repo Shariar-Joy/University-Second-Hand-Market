@@ -104,6 +104,7 @@ class UserOut(BaseModel):
     phone: str | None = None
     profile_image: str | None = None
     bio: str | None = None
+    is_admin: bool
     created_at: datetime
 
 
