@@ -5,7 +5,7 @@ import Login from '../pages/Login'
 import Register from '../pages/Register'
 import About from '../pages/About'
 import Contact from '../pages/Contact'
-import Cart from '../pages/Cart'
+import Messages from '../pages/Messages'
 import Profile from '../pages/Profile'
 import CreateListing from '../pages/CreateListing'
 import ProductDetails from '../pages/ProductDetails'
@@ -62,11 +62,13 @@ function AppRoutes() {
           }
         />
         <Route
-          path={ROUTES.CART}
+          path={ROUTES.MESSAGES}
           element={
-            <PageTransition>
-              <Cart />
-            </PageTransition>
+            <RequireAuth>
+              <PageTransition>
+                <Messages />
+              </PageTransition>
+            </RequireAuth>
           }
         />
         <Route

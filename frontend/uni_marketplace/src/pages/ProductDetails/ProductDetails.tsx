@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Building2,
@@ -9,7 +9,6 @@ import {
   MapPin,
   MessageCircle,
   PackageSearch,
-  ShoppingCart,
 } from 'lucide-react'
 import Button from '../../components/common/Button'
 import Badge from '../../components/ui/Badge'
@@ -19,7 +18,6 @@ import ProductCard from '../../components/product/ProductCard'
 import ListingActions from '../../components/product/ListingActions'
 import { TextLineSkeleton } from '../../components/ui/LoadingSkeleton'
 import { useAuth } from '../../context/AuthContext'
-import { useCart } from '../../context/CartContext'
 import { useToast } from '../../context/ToastContext'
 import { ApiError } from '../../services/apiClient'
 import { getProductImage, handleImageFallback, type ProductCondition } from '../../data/products'
@@ -52,8 +50,8 @@ function formatPostedDate(iso: string): string {
 function ProductDetails() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
-  const { addItem } = useCart()
   const { showToast } = useToast()
   const [product, setProduct] = useState<Product | null>(null)
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
@@ -149,13 +147,18 @@ function ProductDetails() {
     setActiveImageIndex((index) => (index === galleryImages.length - 1 ? 0 : index + 1))
   }
 
-  function handleAddToCart() {
-    addItem(product!.id)
-    showToast(`Added "${product!.name}" to cart`, 'success')
-  }
-
   function handleContactSeller() {
-    showToast(`Contacting sellers isn't wired up yet — reach ${product!.seller} on campus for now.`, 'info')
+    if (!user) {
+      navigate(ROUTES.LOGIN, { state: { from: location.pathname } })
+      return
+    }
+    navigate(ROUTES.MESSAGES, {
+      state: {
+        sellerName: product!.seller,
+        productName: product!.name,
+        productSlug: product!.slug,
+      },
+    })
   }
 
   return (
@@ -267,20 +270,24 @@ function ProductDetails() {
           </div>
 
           {isOwner ? (
-            <ListingActions
-              product={product}
-              onUpdated={setProduct}
-              onDeleted={() => navigate(ROUTES.PROFILE)}
-            />
+            <div className="flex flex-col gap-2 pt-2">
+              <p className="text-sm font-medium text-ink-soft">This is your listing.</p>
+              <ListingActions
+                product={product}
+                onUpdated={setProduct}
+                onDeleted={() => navigate(ROUTES.PROFILE)}
+              />
+            </div>
           ) : (
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-              <Button size="lg" fullWidth onClick={handleAddToCart} disabled={product.status !== 'available'}>
-                <ShoppingCart className="h-4.5 w-4.5" aria-hidden="true" />
-                {product.status === 'available' ? 'Add to Cart' : 'Not Available'}
-              </Button>
-              <Button size="lg" variant="outline" fullWidth onClick={handleContactSeller}>
+            <div className="flex flex-col gap-3 pt-2">
+              <Button
+                size="lg"
+                fullWidth
+                onClick={handleContactSeller}
+                disabled={product.status === 'sold'}
+              >
                 <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />
-                Contact Seller
+                {product.status === 'sold' ? 'Sold' : 'Contact Seller'}
               </Button>
             </div>
           )}
